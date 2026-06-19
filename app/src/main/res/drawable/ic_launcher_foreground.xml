@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A simple "V" mark for ViDa, centered in the safe zone (18dp from edges) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 42 40 L 54 64 L 66 40 L 60 40 L 54 52 L 48 40 Z" />
+</vector>

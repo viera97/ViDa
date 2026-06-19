@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ViDa</string>
+    <string name="hola_vida">¡Hola ViDa!</string>
+    <string name="inicio">Inicio</string>
+</resources>
