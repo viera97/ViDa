@@ -8,6 +8,7 @@ out/
 # IDE
 .idea/
 *.iml
+.atl/
 *.iws
 *.ipr
 .vscode/
