@@ -11,7 +11,7 @@ kotlin {
 
 android {
     namespace = "com.vida.feature.home"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

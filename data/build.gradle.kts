@@ -10,7 +10,7 @@ kotlin {
 
 android {
     namespace = "com.vida.data"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         minSdk = 26

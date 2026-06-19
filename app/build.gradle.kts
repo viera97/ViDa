@@ -11,7 +11,7 @@ kotlin {
 
 android {
     namespace = "com.vida.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.vida.app"
