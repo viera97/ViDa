@@ -9,6 +9,7 @@ out/
 .idea/
 *.iml
 .atl/
+.opencode/
 *.iws
 *.ipr
 .vscode/
