@@ -2,22 +2,31 @@ package com.vida.data.di
 
 import android.content.Context
 import com.vida.data.db.AppDatabase
+import com.vida.data.db.callback.AppDatabaseCallback
+import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.CategoryDao
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
+import com.vida.data.db.dao.RecurringExpenseDao
 import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
+import com.vida.data.db.dao.TransferDao
 import com.vida.data.db.dao.WalletDao
 import com.vida.data.mapper.CardMapper
 import com.vida.data.mapper.CategoryMapper
 import com.vida.data.mapper.CurrencyRateMapper
 import com.vida.data.mapper.ExpenseMapper
+import com.vida.data.mapper.RecurringExpenseMapper
 import com.vida.data.mapper.RefundMapper
 import com.vida.data.mapper.StashMapper
+import com.vida.data.mapper.TransferMapper
 import com.vida.data.mapper.WalletMapper
+import com.vida.data.repository.TransferOrchestrator
 import com.vida.data.security.DevPassphraseProvider
 import com.vida.data.security.PassphraseProvider
+import com.vida.domain.repository.CategoryRepository
+import com.vida.domain.usecase.category.SeedDefaultCategories
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -34,10 +43,16 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideSeedDefaultCategories(repo: CategoryRepository): SeedDefaultCategories =
+        SeedDefaultCategories(repo)
+
+    @Provides
+    @Singleton
     fun provideDatabase(
         @ApplicationContext ctx: Context,
         passphraseProvider: PassphraseProvider,
-    ): AppDatabase = AppDatabase.create(ctx, passphraseProvider)
+        callback: AppDatabaseCallback,
+    ): AppDatabase = AppDatabase.create(ctx, passphraseProvider, callback)
 
     @Provides
     fun provideCardDao(db: AppDatabase): CardDao = db.cardDao()
@@ -61,6 +76,27 @@ object DatabaseModule {
     fun provideCurrencyRateDao(db: AppDatabase): CurrencyRateDao = db.currencyRateDao()
 
     @Provides
+    fun provideTransferDao(db: AppDatabase): TransferDao = db.transferDao()
+
+    @Provides
+    fun provideRecurringExpenseDao(db: AppDatabase): RecurringExpenseDao =
+        db.recurringExpenseDao()
+
+    @Provides
+    fun provideBalanceDao(db: AppDatabase): BalanceDao = db.balanceDao()
+
+    @Provides
+    @Singleton
+    fun provideTransferOrchestrator(
+        db: AppDatabase,
+        transferDao: TransferDao,
+        walletDao: WalletDao,
+        cardDao: CardDao,
+        stashDao: StashDao,
+        transferMapper: TransferMapper,
+    ): TransferOrchestrator = TransferOrchestrator(db, transferDao, walletDao, cardDao, stashDao, transferMapper)
+
+    @Provides
     fun provideCardMapper(): CardMapper = CardMapper
 
     @Provides
@@ -80,4 +116,10 @@ object DatabaseModule {
 
     @Provides
     fun provideCurrencyRateMapper(): CurrencyRateMapper = CurrencyRateMapper
+
+    @Provides
+    fun provideTransferMapper(): TransferMapper = TransferMapper
+
+    @Provides
+    fun provideRecurringExpenseMapper(): RecurringExpenseMapper = RecurringExpenseMapper
 }

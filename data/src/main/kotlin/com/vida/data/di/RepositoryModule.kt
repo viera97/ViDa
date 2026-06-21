@@ -4,15 +4,19 @@ import com.vida.data.repository.CardRepositoryImpl
 import com.vida.data.repository.CategoryRepositoryImpl
 import com.vida.data.repository.CurrencyRateRepositoryImpl
 import com.vida.data.repository.ExpenseRepositoryImpl
+import com.vida.data.repository.RecurringExpenseRepositoryImpl
 import com.vida.data.repository.RefundRepositoryImpl
 import com.vida.data.repository.StashRepositoryImpl
+import com.vida.data.repository.TransferRepositoryImpl
 import com.vida.data.repository.WalletRepositoryImpl
 import com.vida.domain.repository.CardRepository
 import com.vida.domain.repository.CategoryRepository
 import com.vida.domain.repository.CurrencyRateRepository
 import com.vida.domain.repository.ExpenseRepository
+import com.vida.domain.repository.RecurringExpenseRepository
 import com.vida.domain.repository.RefundRepository
 import com.vida.domain.repository.StashRepository
+import com.vida.domain.repository.TransferRepository
 import com.vida.domain.repository.WalletRepository
 import dagger.Binds
 import dagger.Module
@@ -29,4 +33,7 @@ abstract class RepositoryModule {
     @Binds abstract fun bindExpenseRepository(impl: ExpenseRepositoryImpl): ExpenseRepository
     @Binds abstract fun bindRefundRepository(impl: RefundRepositoryImpl): RefundRepository
     @Binds abstract fun bindCurrencyRateRepository(impl: CurrencyRateRepositoryImpl): CurrencyRateRepository
+    @Binds abstract fun bindTransferRepository(impl: TransferRepositoryImpl): TransferRepository
+    @Binds
+    abstract fun bindRecurringExpenseRepository(impl: RecurringExpenseRepositoryImpl): RecurringExpenseRepository
 }

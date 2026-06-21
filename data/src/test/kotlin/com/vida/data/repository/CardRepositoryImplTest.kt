@@ -1,15 +1,19 @@
 package com.vida.data.repository
 
 import app.cash.turbine.test
+import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.CardDao
 import com.vida.data.db.entity.CardEntity
+import com.vida.data.db.entity.CupTotalEntity
 import com.vida.data.mapper.CardMapper
 import com.vida.domain.model.Card
 import com.vida.domain.model.CardNumber
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Money
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -17,16 +21,18 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalDate
 
 class CardRepositoryImplTest {
     private val dao = mockk<CardDao>(relaxed = true)
+    private val balanceDao = mockk<BalanceDao>(relaxed = true)
     private val mapper = CardMapper
     private lateinit var repository: CardRepositoryImpl
 
     @Before
     fun setUp() {
-        repository = CardRepositoryImpl(dao, mapper)
+        repository = CardRepositoryImpl(dao, balanceDao, mapper)
     }
 
     @Test
@@ -77,13 +83,24 @@ class CardRepositoryImplTest {
     }
 
     @Test
-    fun `getBalance throws NotImplementedError`() = runTest {
-        try {
-            repository.getBalance(1L)
-            assert(false) { "Expected NotImplementedError" }
-        } catch (_: NotImplementedError) {
-            // Expected
-        }
+    fun `getBalance delegates to BalanceDao and converts minor units to Money in CUP`() = runTest {
+        val asOf = Instant.ofEpochMilli(10_000L)
+        every { balanceDao.getCardBalance(1L, asOf.toEpochMilli()) } returns
+            flowOf(CupTotalEntity(10_000L))
+
+        val balance = repository.getBalance(1L, asOf)
+
+        // 10000 minor = 100.00 CUP
+        assertEquals(Money.of("100.00", Currency.CUP), balance)
+    }
+
+    @Test
+    fun `getBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
+        every { balanceDao.getCardBalance(any(), any()) } returns flowOf(null)
+
+        val balance = repository.getBalance(1L)
+
+        assertEquals(Money.of("0.00", Currency.CUP), balance)
     }
 
     private fun aCardEntity() = CardEntity(

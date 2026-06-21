@@ -1,13 +1,17 @@
 package com.vida.data.repository
 
 import app.cash.turbine.test
+import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.StashDao
+import com.vida.data.db.entity.CupTotalEntity
 import com.vida.data.db.entity.StashEntity
 import com.vida.data.mapper.StashMapper
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Money
 import com.vida.domain.model.Stash
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -19,12 +23,13 @@ import java.time.Instant
 
 class StashRepositoryImplTest {
     private val dao = mockk<StashDao>(relaxed = true)
+    private val balanceDao = mockk<BalanceDao>(relaxed = true)
     private val mapper = StashMapper
     private lateinit var repository: StashRepositoryImpl
 
     @Before
     fun setUp() {
-        repository = StashRepositoryImpl(dao, mapper)
+        repository = StashRepositoryImpl(dao, balanceDao, mapper)
     }
 
     @Test
@@ -73,13 +78,24 @@ class StashRepositoryImplTest {
     }
 
     @Test
-    fun `getBalance throws NotImplementedError`() = runTest {
-        try {
-            repository.getBalance(1L)
-            assert(false) { "Expected NotImplementedError" }
-        } catch (_: NotImplementedError) {
-            // Expected
-        }
+    fun `getBalance delegates to BalanceDao and converts minor units to Money in CUP`() = runTest {
+        val asOf = Instant.ofEpochMilli(10_000L)
+        every { balanceDao.getStashBalance(1L, asOf.toEpochMilli()) } returns
+            flowOf(CupTotalEntity(20_000L))
+
+        val balance = repository.getBalance(1L, asOf)
+
+        // 20000 minor = 200.00 CUP
+        assertEquals(Money.of("200.00", Currency.CUP), balance)
+    }
+
+    @Test
+    fun `getBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
+        every { balanceDao.getStashBalance(any(), any()) } returns flowOf(null)
+
+        val balance = repository.getBalance(1L)
+
+        assertEquals(Money.of("0.00", Currency.CUP), balance)
     }
 
     private fun aStashEntity() = StashEntity(

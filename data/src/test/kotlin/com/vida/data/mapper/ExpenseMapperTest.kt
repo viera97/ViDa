@@ -93,7 +93,7 @@ class ExpenseMapperTest {
             note = "rounded up",
         )
         val entity = mapper.toEntity(expense)
-        val roundTrip = mapper.toDomain(expense.let { mapper.toDomain(mapper.toEntity(it)) })
+        val roundTrip = mapper.toDomain(entity)
 
         assertEquals(expense, roundTrip)
         assertEquals(2050L, entity.realAmountMinor)

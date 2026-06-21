@@ -41,7 +41,7 @@ class RefundMapperTest {
             note = null,
         )
         val entity = mapper.toEntity(refund)
-        val roundTrip = mapper.toDomain(refund.let { mapper.toDomain(mapper.toEntity(it)) })
+        val roundTrip = mapper.toDomain(entity)
 
         assertEquals(refund, roundTrip)
         assertEquals(null, entity.note)
