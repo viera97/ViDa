@@ -3,6 +3,7 @@ package com.vida.data.db
 import androidx.room.TypeConverter
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Frequency
 import com.vida.domain.model.SourceType
 import java.time.Instant
 import java.time.LocalDate
@@ -37,4 +38,10 @@ class Converters {
 
     @TypeConverter
     fun toSourceType(value: String): SourceType = SourceType.valueOf(value)
+
+    @TypeConverter
+    fun fromFrequency(value: Frequency): String = value.name
+
+    @TypeConverter
+    fun toFrequency(value: String): Frequency = Frequency.valueOf(value)
 }

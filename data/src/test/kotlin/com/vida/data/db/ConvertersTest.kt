@@ -2,6 +2,7 @@ package com.vida.data.db
 
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Frequency
 import com.vida.domain.model.SourceType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -99,6 +100,24 @@ class ConvertersTest {
     fun `source type unknown throws`() {
         assertThrows(IllegalArgumentException::class.java) {
             converters.toSourceType("UNKNOWN")
+        }
+    }
+
+    // ── Frequency ─────────────────────────────────────────────────────
+
+    @Test
+    fun `frequency round trip for all values`() {
+        for (frequency in Frequency.values()) {
+            val text = converters.fromFrequency(frequency)
+            val back = converters.toFrequency(text)
+            assertEquals(frequency, back)
+        }
+    }
+
+    @Test
+    fun `frequency unknown throws`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            converters.toFrequency("UNKNOWN")
         }
     }
 }
