@@ -20,4 +20,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ViDa"
-include(":app", ":core", ":domain", ":data", ":feature-home", ":feature-expense", ":feature-expense-list", ":feature-category-management", ":feature-card-management", ":feature-stash-management")
+include(":app", ":core", ":domain", ":data", ":feature-home", ":feature-expense", ":feature-expense-list", ":feature-category-management", ":feature-card-management", ":feature-stash-management", ":feature-wallet-management")
