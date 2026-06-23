@@ -33,11 +33,12 @@ class WalletRepositoryImplTest {
 
     @Test
     fun `get returns mapped wallet`() = runTest {
-        val entity = WalletEntity(currency = Currency.CUP)
+        val entity = WalletEntity(currency = Currency.CUP, name = "Mi Billetera")
         coEvery { dao.get() } returns entity
 
         val wallet = repository.get()
         assertEquals(Currency.CUP, wallet.currency)
+        assertEquals("Mi Billetera", wallet.name)
     }
 
     @Test
@@ -54,9 +55,11 @@ class WalletRepositoryImplTest {
 
     @Test
     fun `upsert delegates to dao`() = runTest {
-        val wallet = Wallet(currency = Currency.USD)
+        val wallet = Wallet(currency = Currency.USD, name = "Billetera USD")
         repository.upsert(wallet)
-        coVerify { dao.upsert(WalletEntity(currency = Currency.USD)) }
+        coVerify {
+            dao.upsert(WalletEntity(currency = Currency.USD, name = "Billetera USD"))
+        }
     }
 
     @Test

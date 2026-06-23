@@ -1,5 +1,6 @@
 package com.vida.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vida.domain.model.Currency
@@ -13,4 +14,5 @@ import com.vida.domain.model.Currency
 data class WalletEntity(
     @PrimaryKey val id: Long = 1L,
     val currency: Currency,
+    @ColumnInfo(name = "name") val name: String = "Billetera",
 )

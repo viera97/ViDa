@@ -40,7 +40,7 @@ import net.sqlcipher.database.SupportFactory
         TransferEntity::class,
         RecurringExpenseEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -64,7 +64,7 @@ abstract class AppDatabase : RoomDatabase() {
         ): AppDatabase =
             Room.databaseBuilder(ctx, AppDatabase::class.java, "vida.db")
                 .openHelperFactory(SupportFactory(passphraseProvider.getPassphrase()))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .apply { if (callback != null) addCallback(callback) }
                 .build()
     }

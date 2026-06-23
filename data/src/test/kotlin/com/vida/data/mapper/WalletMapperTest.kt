@@ -34,4 +34,20 @@ class WalletMapperTest {
         val roundTrip = mapper.toDomain(entity)
         assertEquals(1L, roundTrip.id)
     }
+
+    @Test
+    fun `name maps entity to domain`() {
+        val entity = mapper.toEntity(Wallet(currency = Currency.CUP))
+        entity.copy(name = "Mi Billetera").let { modified ->
+            val wallet = mapper.toDomain(modified)
+            assertEquals("Mi Billetera", wallet.name)
+        }
+    }
+
+    @Test
+    fun `name maps domain to entity`() {
+        val wallet = Wallet(currency = Currency.USD, name = "Billetera USD")
+        val entity = mapper.toEntity(wallet)
+        assertEquals("Billetera USD", entity.name)
+    }
 }

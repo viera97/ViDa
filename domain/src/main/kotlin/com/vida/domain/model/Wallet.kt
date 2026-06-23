@@ -10,6 +10,7 @@ package com.vida.domain.model
 data class Wallet(
     val id: Long = 1L,
     val currency: Currency,
+    val name: String = "Billetera",
 ) {
     init {
         require(id == 1L) { "Wallet is a singleton; id must be 1" }
