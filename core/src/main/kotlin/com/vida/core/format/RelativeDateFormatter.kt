@@ -1,4 +1,4 @@
-package com.vida.feature.home.util
+package com.vida.core.format
 
 import java.time.Clock
 import java.time.Duration

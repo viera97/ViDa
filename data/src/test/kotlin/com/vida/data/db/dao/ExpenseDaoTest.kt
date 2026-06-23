@@ -1,6 +1,7 @@
 package com.vida.data.db.dao
 
 import androidx.room.Room
+import androidx.sqlite.db.SimpleSQLiteQuery
 import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.vida.data.db.AppDatabase
@@ -153,6 +154,149 @@ class ExpenseDaoTest {
         }
     }
 
+    // ── @RawQuery searchExpenses integration tests ──────────────────────────
+
+    @Test
+    fun `searchExpenses empty table returns empty list`() = runTest {
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf(20, 0),
+        )
+        val results = dao.searchExpenses(query)
+        assertEquals(0, results.size)
+    }
+
+    @Test
+    fun `searchExpenses single date from filter`() = runTest {
+        seed()
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 1_000L))
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 2_000L))
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 3_000L))
+
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses WHERE date_time >= ? ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf<Any>(2_000L, 20, 0),
+        )
+        val results = dao.searchExpenses(query)
+        assertEquals(2, results.size)
+        assertEquals(3_000L, results[0].dateTime)
+        assertEquals(2_000L, results[1].dateTime)
+    }
+
+    @Test
+    fun `searchExpenses single category filter`() = runTest {
+        seed()
+        dao.upsert(anExpense(categoryId = 1L, sourceWalletId = 1L, dateTime = 1_000L))
+        dao.upsert(anExpense(categoryId = 2L, sourceWalletId = 1L, dateTime = 1_000L))
+
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses WHERE category_id IN (?,?) ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf<Any>(1L, 2L, 20, 0),
+        )
+        val results = dao.searchExpenses(query)
+        assertEquals(2, results.size)
+    }
+
+    @Test
+    fun `searchExpenses combined date and currency filter`() = runTest {
+        seed()
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 1_000L, amountCurrency = "CUP"))
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 2_000L, amountCurrency = "USD"))
+        dao.upsert(anExpense(sourceWalletId = 1L, dateTime = 3_000L, amountCurrency = "CUP"))
+
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses WHERE date_time >= ? AND amount_currency = ? ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf<Any>(1_000L, "CUP", 20, 0),
+        )
+        val results = dao.searchExpenses(query)
+        assertEquals(2, results.size)
+        results.forEach { assertEquals("CUP", it.amountCurrency) }
+    }
+
+    @Test
+    fun `searchExpenses pagination boundary`() = runTest {
+        seed()
+        repeat(5) { i ->
+            dao.upsert(anExpense(sourceWalletId = 1L, dateTime = (1000L + i.toLong())))
+        }
+
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf(2, 0),
+        )
+        val page1 = dao.searchExpenses(query)
+        assertEquals(2, page1.size)
+
+        val query2 = SimpleSQLiteQuery(
+            "SELECT * FROM expenses ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf(2, 2),
+        )
+        val page2 = dao.searchExpenses(query2)
+        assertEquals(2, page2.size)
+
+        val query3 = SimpleSQLiteQuery(
+            "SELECT * FROM expenses ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf(2, 4),
+        )
+        val page3 = dao.searchExpenses(query3)
+        assertEquals(1, page3.size)
+    }
+
+    @Test
+    fun `searchExpenses combined all filters`() = runTest {
+        seed()
+        // Matches: date 1_000..3_000, cat 1, currency CUP, description "Groceries"
+        dao.upsert(
+            anExpense(
+                categoryId = 1L,
+                sourceWalletId = 1L,
+                dateTime = 2_000L,
+                amountCurrency = "CUP",
+                description = "Groceries",
+            ),
+        )
+        // Excluded: wrong category
+        dao.upsert(
+            anExpense(
+                categoryId = 2L,
+                sourceWalletId = 1L,
+                dateTime = 2_000L,
+                amountCurrency = "CUP",
+                description = "Groceries",
+            ),
+        )
+        // Excluded: wrong currency
+        dao.upsert(
+            anExpense(
+                categoryId = 1L,
+                sourceWalletId = 1L,
+                dateTime = 2_000L,
+                amountCurrency = "USD",
+                description = "Groceries",
+            ),
+        )
+        // Excluded: out of date range
+        dao.upsert(
+            anExpense(
+                categoryId = 1L,
+                sourceWalletId = 1L,
+                dateTime = 5_000L,
+                amountCurrency = "CUP",
+                description = "Groceries",
+            ),
+        )
+
+        val query = SimpleSQLiteQuery(
+            "SELECT * FROM expenses WHERE date_time >= ? AND date_time < ? " +
+                "AND category_id IN (?) AND amount_currency = ? " +
+                "ORDER BY date_time DESC LIMIT ? OFFSET ?",
+            arrayOf<Any>(1_000L, 3_000L, 1L, "CUP", 20, 0),
+        )
+        val results = dao.searchExpenses(query)
+        assertEquals(1, results.size)
+        assertEquals("Groceries", results[0].description)
+    }
+
     private suspend fun seed() {
         database.categoryDao().upsert(CategoryEntity(name = "Comida", color = 0, icon = null, isSystem = 0))
         database.categoryDao().upsert(CategoryEntity(name = "Transporte", color = 0, icon = null, isSystem = 0))
@@ -182,13 +326,15 @@ class ExpenseDaoTest {
         sourceCardId: Long? = null,
         sourceStashId: Long? = null,
         dateTime: Long = 1_000L,
+        amountCurrency: String = "CUP",
+        description: String = "Lunch",
     ) = ExpenseEntity(
         categoryId = categoryId,
         amountMinor = 1234L,
-        amountCurrency = "CUP",
+        amountCurrency = amountCurrency,
         realAmountMinor = null,
         realAmountCurrency = null,
-        description = "Lunch",
+        description = description,
         dateTime = dateTime,
         note = null,
         sourceWalletId = sourceWalletId,

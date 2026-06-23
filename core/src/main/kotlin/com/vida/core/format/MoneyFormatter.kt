@@ -1,4 +1,4 @@
-package com.vida.feature.home.util
+package com.vida.core.format
 
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money

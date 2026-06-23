@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
-import com.vida.feature.home.util.formatMoney
+import com.vida.core.format.formatMoney
 
 /**
  * Per-currency subtotals row (R3).
