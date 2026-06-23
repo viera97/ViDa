@@ -46,6 +46,7 @@ fun HomeScreen(
     onNavigateToCategoryManagement: () -> Unit = {},
     onNavigateToCardManagement: () -> Unit = {},
     onNavigateToStashManagement: () -> Unit = {},
+    onNavigateToRateManagement: () -> Unit = {},
     onNavigateToWalletManagement: () -> Unit = {},
     onNavigateToTransferManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
@@ -78,6 +79,12 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToStashManagement) {
                         Text(
                             text = "\uD83D\uDC8E",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
+                    IconButton(onClick = onNavigateToRateManagement) {
+                        Text(
+                            text = "\uD83D\uDCB1",
                             style = MaterialTheme.typography.headlineSmall,
                         )
                     }
