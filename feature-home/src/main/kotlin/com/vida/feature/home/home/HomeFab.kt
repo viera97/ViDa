@@ -9,17 +9,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /**
- * Home FAB — no-op in slice 1 (R7 S1).
+ * Home FAB — navigates to the expense recording form.
  *
- * Visible in all states (Loading, Ready, Empty, Error) but click does
- * nothing. Future slices add expense/transfer recording.
+ * Visible in all states (Loading, Ready, Empty, Error).
+ *
+ * @param onClick Called when the FAB is tapped (navigates to expense form).
  */
 @Composable
 fun HomeFab(
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FloatingActionButton(
-        onClick = { /* no-op — R7 S1 */ },
+        onClick = onClick,
         modifier = modifier,
     ) {
         Text(

@@ -40,6 +40,7 @@ import com.vida.feature.home.home.TotalBalanceCard
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    onNavigateToExpenseForm: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -50,7 +51,7 @@ fun HomeScreen(
                 title = { Text("Inicio") }
             )
         },
-        floatingActionButton = { HomeFab() },
+        floatingActionButton = { HomeFab(onClick = onNavigateToExpenseForm) },
     ) { innerPadding ->
         Surface(
             modifier = Modifier
