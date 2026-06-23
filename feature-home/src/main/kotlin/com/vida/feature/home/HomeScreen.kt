@@ -41,6 +41,7 @@ import com.vida.feature.home.home.TotalBalanceCard
 @Composable
 fun HomeScreen(
     onNavigateToExpenseForm: () -> Unit = {},
+    onNavigateToExpenseList: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -74,7 +75,10 @@ fun HomeScreen(
                         Spacer(modifier = Modifier.height(16.dp))
                         PerSourceBreakdownSection(perSource = state.perSource)
                         Spacer(modifier = Modifier.height(16.dp))
-                        RecentExpensesList(expenses = state.recentExpenses)
+                        RecentExpensesList(
+                            expenses = state.recentExpenses,
+                            onNavigateToExpenseList = onNavigateToExpenseList,
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
                         RatesIndicator(rates = state.rates)
                     }
