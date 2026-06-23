@@ -45,6 +45,7 @@ fun HomeScreen(
     onNavigateToExpenseList: () -> Unit = {},
     onNavigateToCategoryManagement: () -> Unit = {},
     onNavigateToCardManagement: () -> Unit = {},
+    onNavigateToStashManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -57,6 +58,12 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToCardManagement) {
                         Text(
                             text = "♠",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
+                    IconButton(onClick = onNavigateToStashManagement) {
+                        Text(
+                            text = "\uD83D\uDCB0",
                             style = MaterialTheme.typography.headlineSmall,
                         )
                     }

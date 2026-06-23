@@ -50,6 +50,7 @@ dependencies {
     implementation(project(":feature-expense-list"))
     implementation(project(":feature-category-management"))
     implementation(project(":feature-card-management"))
+    implementation(project(":feature-stash-management"))
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

@@ -6,6 +6,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.vida.feature.cardmanagement.CardListScreen
 import com.vida.feature.categorymanagement.CategoryListScreen
+import com.vida.feature.stashmanagement.StashListScreen
 import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
@@ -18,6 +19,8 @@ import com.vida.feature.home.HomeScreen
  * - "expenses" → [ExpenseListScreen] (full expense list with filters)
  * - "expense/{id}" → [ExpenseDetailScreen] (placeholder for PR #3)
  * - "categories" → [CategoryListScreen] (category management)
+ * - "cards" → [CardListScreen] (card management)
+ * - "stashes" → [StashListScreen] (stash/savings management)
  *
  * Navigation Compose is a new dependency introduced for this feature.
  * Hardware/system back returns to the previous screen.
@@ -39,6 +42,9 @@ fun ViDaApp() {
                 },
                 onNavigateToCardManagement = {
                     navController.navigate("cards")
+                },
+                onNavigateToStashManagement = {
+                    navController.navigate("stashes")
                 },
             )
         }
@@ -67,6 +73,11 @@ fun ViDaApp() {
         }
         composable("cards") {
             CardListScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable("stashes") {
+            StashListScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
