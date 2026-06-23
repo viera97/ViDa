@@ -44,6 +44,7 @@ fun HomeScreen(
     onNavigateToExpenseForm: () -> Unit = {},
     onNavigateToExpenseList: () -> Unit = {},
     onNavigateToCategoryManagement: () -> Unit = {},
+    onNavigateToCardManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -53,6 +54,12 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Inicio") },
                 actions = {
+                    IconButton(onClick = onNavigateToCardManagement) {
+                        Text(
+                            text = "♠",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
                     IconButton(onClick = onNavigateToCategoryManagement) {
                         Text(
                             text = "⚙",

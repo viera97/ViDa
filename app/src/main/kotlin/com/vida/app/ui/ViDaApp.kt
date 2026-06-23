@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.vida.feature.cardmanagement.CardListScreen
 import com.vida.feature.categorymanagement.CategoryListScreen
 import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
@@ -36,6 +37,9 @@ fun ViDaApp() {
                 onNavigateToCategoryManagement = {
                     navController.navigate("categories")
                 },
+                onNavigateToCardManagement = {
+                    navController.navigate("cards")
+                },
             )
         }
         composable("expense/new") {
@@ -59,6 +63,11 @@ fun ViDaApp() {
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAdd = { /* PR #2: navigate to add category */ },
                 onNavigateToEdit = { /* PR #2: navigate to edit category */ },
+            )
+        }
+        composable("cards") {
+            CardListScreen(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
     }
