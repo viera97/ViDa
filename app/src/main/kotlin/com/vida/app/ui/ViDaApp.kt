@@ -11,12 +11,14 @@ import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
 import com.vida.feature.home.HomeScreen
+import com.vida.feature.transfermanagement.TransferFormScreen
 import com.vida.feature.walletmanagement.WalletScreen
 
 /**
  * Root app composable. Sets up [NavHost] with routes:
  * - "home" → [HomeScreen] (dashboard)
  * - "expense/new" → [ExpenseFormScreen] (expense recording form)
+ * - "transfer/new" → [TransferFormScreen] (transfer creation form)
  * - "expenses" → [ExpenseListScreen] (full expense list with filters)
  * - "expense/{id}" → [ExpenseDetailScreen] (placeholder for PR #3)
  * - "categories" → [CategoryListScreen] (category management)
@@ -51,10 +53,18 @@ fun ViDaApp() {
                 onNavigateToWalletManagement = {
                     navController.navigate("wallet")
                 },
+                onNavigateToTransferManagement = {
+                    navController.navigate("transfer/new")
+                },
             )
         }
         composable("expense/new") {
             ExpenseFormScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable("transfer/new") {
+            TransferFormScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }

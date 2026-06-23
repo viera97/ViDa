@@ -47,6 +47,7 @@ fun HomeScreen(
     onNavigateToCardManagement: () -> Unit = {},
     onNavigateToStashManagement: () -> Unit = {},
     onNavigateToWalletManagement: () -> Unit = {},
+    onNavigateToTransferManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -56,6 +57,12 @@ fun HomeScreen(
             TopAppBar(
                 title = { Text("Inicio") },
                 actions = {
+                    IconButton(onClick = onNavigateToTransferManagement) {
+                        Text(
+                            text = "↔",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
                     IconButton(onClick = onNavigateToWalletManagement) {
                         Text(
                             text = "\uD83D\uDCB0",
