@@ -11,6 +11,7 @@ import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
 import com.vida.feature.home.HomeScreen
+import com.vida.feature.walletmanagement.WalletScreen
 
 /**
  * Root app composable. Sets up [NavHost] with routes:
@@ -21,6 +22,7 @@ import com.vida.feature.home.HomeScreen
  * - "categories" → [CategoryListScreen] (category management)
  * - "cards" → [CardListScreen] (card management)
  * - "stashes" → [StashListScreen] (stash/savings management)
+ * - "wallet" → [WalletScreen] (wallet view/edit)
  *
  * Navigation Compose is a new dependency introduced for this feature.
  * Hardware/system back returns to the previous screen.
@@ -45,6 +47,9 @@ fun ViDaApp() {
                 },
                 onNavigateToStashManagement = {
                     navController.navigate("stashes")
+                },
+                onNavigateToWalletManagement = {
+                    navController.navigate("wallet")
                 },
             )
         }
@@ -78,6 +83,11 @@ fun ViDaApp() {
         }
         composable("stashes") {
             StashListScreen(
+                onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable("wallet") {
+            WalletScreen(
                 onNavigateBack = { navController.popBackStack() },
             )
         }
