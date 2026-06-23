@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.vida.feature.categorymanagement.CategoryListScreen
 import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
@@ -15,6 +16,7 @@ import com.vida.feature.home.HomeScreen
  * - "expense/new" → [ExpenseFormScreen] (expense recording form)
  * - "expenses" → [ExpenseListScreen] (full expense list with filters)
  * - "expense/{id}" → [ExpenseDetailScreen] (placeholder for PR #3)
+ * - "categories" → [CategoryListScreen] (category management)
  *
  * Navigation Compose is a new dependency introduced for this feature.
  * Hardware/system back returns to the previous screen.
@@ -30,6 +32,9 @@ fun ViDaApp() {
                 },
                 onNavigateToExpenseList = {
                     navController.navigate("expenses")
+                },
+                onNavigateToCategoryManagement = {
+                    navController.navigate("categories")
                 },
             )
         }
@@ -47,6 +52,13 @@ fun ViDaApp() {
         composable("expense/{id}") {
             ExpenseDetailScreen(
                 onNavigateBack = { navController.popBackStack() },
+            )
+        }
+        composable("categories") {
+            CategoryListScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAdd = { /* PR #2: navigate to add category */ },
+                onNavigateToEdit = { /* PR #2: navigate to edit category */ },
             )
         }
     }

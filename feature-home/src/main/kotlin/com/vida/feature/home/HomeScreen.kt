@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -42,6 +43,7 @@ import com.vida.feature.home.home.TotalBalanceCard
 fun HomeScreen(
     onNavigateToExpenseForm: () -> Unit = {},
     onNavigateToExpenseList: () -> Unit = {},
+    onNavigateToCategoryManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -49,7 +51,15 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Inicio") }
+                title = { Text("Inicio") },
+                actions = {
+                    IconButton(onClick = onNavigateToCategoryManagement) {
+                        Text(
+                            text = "⚙",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
+                },
             )
         },
         floatingActionButton = { HomeFab(onClick = onNavigateToExpenseForm) },
