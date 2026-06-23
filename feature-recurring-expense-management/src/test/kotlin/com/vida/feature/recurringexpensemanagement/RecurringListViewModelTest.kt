@@ -135,6 +135,9 @@ class RecurringListViewModelTest {
 
         // Default: templates exist
         every { listRecurringExpenses() } returns flowOf(sampleTemplates)
+        every { listCategories() } returns flowOf(emptyList())
+        every { listCards() } returns flowOf(emptyList())
+        every { listStashes() } returns flowOf(emptyList())
         coEvery { deleteRecurringExpense(any()) } returns Unit
         coEvery { getRecurringExpense(any()) } returns sampleTemplates[0]
         coEvery { updateRecurringExpense(any()) } returns 1L

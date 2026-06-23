@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vida.domain.model.RecurringExpense
 
 /**
  * Root composable for the recurring expense management screen.
@@ -43,12 +44,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  *   centered message for [RecurringListUiState.Empty],
  *   error message + retry for [RecurringListUiState.Error],
  *   spinner for [RecurringListUiState.Loading]
- * - FAB ("+") → emits add dialog request (form dialog in PR #2)
+ * - FAB ("+") → emits add dialog request via ViewModel
  *
  * Dialog management is owned by this composable via [mutableStateOf];
  * the ViewModel exposes [RecurringListViewModel.navEvents] for feedback.
  *
- * PR #1: list, delete, toggle active, error retry. FAB and context menu "Editar" / "Generar" are no-ops.
+ * PR #2: form dialog (add/edit) wired. PR #3 will add generate flow.
  *
  * @param onNavigateBack Back navigation via toolbar arrow.
  * @param viewModel Injected via Hilt.
@@ -61,11 +62,14 @@ fun RecurringListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    val categories by viewModel.categories.collectAsStateWithLifecycle()
+    val cards by viewModel.cards.collectAsStateWithLifecycle()
+    val stashes by viewModel.stashes.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<RecurringDisplayItem?>(null) }
+    var editingEntity by remember { mutableStateOf<RecurringExpense?>(null) }
     var showDeleteConfirm by remember { mutableStateOf<RecurringDisplayItem?>(null) }
 
     // Observe one-shot navigation events.
@@ -78,7 +82,7 @@ fun RecurringListScreen(
 
                 is RecurringNavEvent.SaveSuccess -> {
                     showAddDialog = false
-                    editingItem = null
+                    editingEntity = null
                 }
 
                 is RecurringNavEvent.ShowAddDialog -> {
@@ -87,6 +91,10 @@ fun RecurringListScreen(
 
                 is RecurringNavEvent.ShowDeleteDialog -> {
                     showDeleteConfirm = event.item
+                }
+
+                is RecurringNavEvent.ShowEditDialog -> {
+                    editingEntity = event.entity
                 }
             }
         }
@@ -139,8 +147,8 @@ fun RecurringListScreen(
                         ) { item ->
                             RecurringListItem(
                                 item = item,
-                                onClick = { editingItem = item },
-                                onEdit = { editingItem = item },
+                                onClick = { viewModel.onOpenEditDialog(item) },
+                                onEdit = { viewModel.onOpenEditDialog(item) },
                                 onDelete = { viewModel.onRequestDelete(item) },
                                 onGenerate = {
                                     // PR #3: trigger two-step generate flow
@@ -201,34 +209,52 @@ fun RecurringListScreen(
         }
     }
 
-    // ── Add dialog (placeholder — full form in PR #2) ────────────────────────
+    // ── Add dialog ────────────────────────────────────────────────────────────
     if (showAddDialog) {
-        AlertDialog(
-            onDismissRequest = { showAddDialog = false },
-            title = { Text("Agregar plantilla") },
-            text = {
-                Text("El formulario de alta estará disponible en la próxima actualización.")
-            },
-            confirmButton = {
-                TextButton(onClick = { showAddDialog = false }) {
-                    Text("Cerrar")
-                }
-            },
+        RecurringFormDialog(
+            isEdit = false,
+            isSaving = isSaving,
+            categories = categories,
+            cards = cards,
+            stashes = stashes,
+            onDismiss = { showAddDialog = false },
+            onSave = { expense -> viewModel.onAdd(expense) },
         )
     }
 
-    // ── Edit dialog (placeholder — full form in PR #2) ───────────────────────
-    editingItem?.let { item ->
-        AlertDialog(
-            onDismissRequest = { editingItem = null },
-            title = { Text("Editar plantilla") },
-            text = {
-                Text("La edición de \"${item.description}\" estará disponible en la próxima actualización.")
-            },
-            confirmButton = {
-                TextButton(onClick = { editingItem = null }) {
-                    Text("Cerrar")
-                }
+    // ── Edit dialog ───────────────────────────────────────────────────────────
+    editingEntity?.let { entity ->
+        RecurringFormDialog(
+            initialAmount = entity.amount.amount.toPlainString(),
+            initialCurrency = entity.currency,
+            initialCategoryId = entity.categoryId,
+            initialSourceType = entity.sourceType,
+            initialSourceId = entity.sourceId,
+            initialDescription = entity.description,
+            initialFrequency = entity.frequency,
+            initialStartDate = entity.startDate,
+            initialEndDate = entity.endDate,
+            initialIsActive = entity.isActive,
+            isEdit = true,
+            isSaving = isSaving,
+            categories = categories,
+            cards = cards,
+            stashes = stashes,
+            onDismiss = { editingEntity = null },
+            onSave = { formExpense ->
+                val merged = entity.copy(
+                    amount = formExpense.amount,
+                    currency = formExpense.currency,
+                    categoryId = formExpense.categoryId,
+                    sourceType = formExpense.sourceType,
+                    sourceId = formExpense.sourceId,
+                    description = formExpense.description,
+                    frequency = formExpense.frequency,
+                    startDate = formExpense.startDate,
+                    endDate = formExpense.endDate,
+                    isActive = formExpense.isActive,
+                )
+                viewModel.onEdit(merged)
             },
         )
     }

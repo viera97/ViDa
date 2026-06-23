@@ -1,5 +1,7 @@
 package com.vida.feature.recurringexpensemanagement
 
+import com.vida.domain.model.RecurringExpense
+
 /**
  * UI state for the recurring expense list screen.
  *
@@ -68,4 +70,7 @@ sealed class RecurringNavEvent {
 
     /** Emitted when delete confirmation is requested for a template. */
     data class ShowDeleteDialog(val item: RecurringDisplayItem) : RecurringNavEvent()
+
+    /** Emitted when edit is requested for a template, carrying the full entity. */
+    data class ShowEditDialog(val entity: RecurringExpense) : RecurringNavEvent()
 }
