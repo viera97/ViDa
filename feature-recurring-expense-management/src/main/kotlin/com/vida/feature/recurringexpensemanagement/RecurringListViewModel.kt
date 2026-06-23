@@ -7,6 +7,7 @@ import com.vida.domain.model.Category
 import com.vida.domain.model.Frequency
 import com.vida.domain.model.RecurringExpense
 import com.vida.domain.model.SourceType
+import com.vida.domain.model.Expense
 import com.vida.domain.model.Stash
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
@@ -30,7 +31,9 @@ import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.math.RoundingMode
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
@@ -70,6 +73,10 @@ class RecurringListViewModel @Inject constructor(
     /** True while any mutation (delete, toggle, add, edit) is in-flight (prevents double-tap). */
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    /** True while a generate operation is in-flight (prevents double-tap). */
+    private val _isGenerating = MutableStateFlow(false)
+    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
     // ── Reference data (collected reactively for form dropdowns) ──────────
 
@@ -262,6 +269,59 @@ class RecurringListViewModel @Inject constructor(
     /** Re-initiates the Flow collection from the [RecurringListUiState.Error] state. */
     fun onRetry() {
         collectRecurringExpenses()
+    }
+
+    /**
+     * Two-step generate flow for the recurring template with [id]:
+     *
+     * 1. [GenerateRecurringExpense] advances the template's `lastGeneratedDate`
+     *    and returns an expense ID. `0L` is the sentinel for "nothing generated"
+     *    (the caller skips step 2).
+     * 2. If step 1 returned a positive ID, [RecordExpense] persists a new
+     *    [Expense] row with the template's source/category/amount/description.
+     *
+     * On success a "Gasto generado" toast is emitted. On error the exception
+     * message is shown.
+     */
+    fun onGenerate(id: Long) {
+        if (_isGenerating.value) return
+
+        viewModelScope.launch {
+            _isGenerating.value = true
+            try {
+                val generatedId = generateRecurringExpense(id)
+                if (generatedId > 0L) {
+                    val template = getRecurringExpense(id)
+                    if (template != null) {
+                        val expense = Expense(
+                            id = 0L,
+                            categoryId = template.categoryId,
+                            amount = template.amount,
+                            realAmount = null,
+                            description = template.description,
+                            dateTime = (template.lastGeneratedDate
+                                ?: LocalDate.now())
+                                .atStartOfDay(ZoneOffset.UTC)
+                                .toInstant(),
+                            sourceType = template.sourceType,
+                            sourceId = template.sourceId,
+                            note = null,
+                        )
+                        recordExpense(expense)
+                    }
+                }
+                _navEvents.send(RecurringNavEvent.ShowToast("Gasto generado"))
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _navEvents.send(
+                    RecurringNavEvent.ShowToast(
+                        t.message ?: "No se pudo generar el gasto",
+                    ),
+                )
+            } finally {
+                _isGenerating.value = false
+            }
+        }
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────

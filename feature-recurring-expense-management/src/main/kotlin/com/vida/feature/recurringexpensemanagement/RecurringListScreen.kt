@@ -150,9 +150,7 @@ fun RecurringListScreen(
                                 onClick = { viewModel.onOpenEditDialog(item) },
                                 onEdit = { viewModel.onOpenEditDialog(item) },
                                 onDelete = { viewModel.onRequestDelete(item) },
-                                onGenerate = {
-                                    // PR #3: trigger two-step generate flow
-                                },
+                                onGenerate = { viewModel.onGenerate(item.id) },
                                 onToggleActive = { viewModel.onToggleActive(item.id) },
                             )
                         }

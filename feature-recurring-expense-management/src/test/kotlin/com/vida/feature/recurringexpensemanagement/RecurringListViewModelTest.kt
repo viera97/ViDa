@@ -2,6 +2,7 @@ package com.vida.feature.recurringexpensemanagement
 
 import app.cash.turbine.test
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Expense
 import com.vida.domain.model.Frequency
 import com.vida.domain.model.Money
 import com.vida.domain.model.RecurringExpense
@@ -37,6 +38,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import java.math.BigDecimal
+import java.time.Instant
 import java.time.LocalDate
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -649,6 +651,168 @@ class RecurringListViewModelTest {
 
             val event = awaitItem()
             assertTrue(event is RecurringNavEvent.ShowAddDialog)
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // R8 — Generate flow (PR #3)
+    // ══════════════════════════════════════════════════════════════════════
+
+    // ── SCN-REC-018: Generate success → RecordExpense called ──────────────────
+    @Test
+    fun `generate success calls RecordExpense with correct Expense`() = runTest {
+        coEvery { generateRecurringExpense(1L) } returns 42L
+        coEvery { getRecurringExpense(1L) } returns sampleTemplates[0]
+        coEvery { recordExpense(any()) } returns 100L
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(1L)
+
+            val toast = awaitItem() as RecurringNavEvent.ShowToast
+            assertEquals("Gasto generado", toast.message)
+        }
+
+        coVerify(exactly = 1) { generateRecurringExpense(1L) }
+        coVerify(exactly = 1) { getRecurringExpense(1L) }
+        coVerify(exactly = 1) {
+            recordExpense(match { expense ->
+                expense.id == 0L &&
+                    expense.categoryId == 10L &&
+                    expense.amount == sampleTemplates[0].amount &&
+                    expense.description == "Alquiler" &&
+                    expense.sourceType == sampleTemplates[0].sourceType &&
+                    expense.sourceId == null
+            })
+        }
+    }
+
+    // ── SCN-REC-019: Generate 0L sentinel → no RecordExpense ──────────────────
+    @Test
+    fun `generate with 0L sentinel does NOT call RecordExpense`() = runTest {
+        coEvery { generateRecurringExpense(1L) } returns 0L
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(1L)
+
+            val toast = awaitItem() as RecurringNavEvent.ShowToast
+            assertEquals("Gasto generado", toast.message)
+        }
+
+        coVerify(exactly = 1) { generateRecurringExpense(1L) }
+        coVerify(inverse = true) { recordExpense(any()) }
+        coVerify(inverse = true) { getRecurringExpense(any()) } // not fetched on 0L
+    }
+
+    // ── SCN-REC-020: Generate error → toast ───────────────────────────────────
+    @Test
+    fun `generate error emits toast and does NOT call RecordExpense`() = runTest {
+        coEvery { generateRecurringExpense(1L) } throws RuntimeException("DB locked")
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(1L)
+
+            val event = awaitItem() as RecurringNavEvent.ShowToast
+            assertEquals("DB locked", event.message)
+        }
+
+        coVerify(inverse = true) { recordExpense(any()) }
+    }
+
+    @Test
+    fun `generate error with no message uses fallback toast`() = runTest {
+        coEvery { generateRecurringExpense(1L) } throws RuntimeException()
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(1L)
+
+            val event = awaitItem() as RecurringNavEvent.ShowToast
+            assertTrue(event.message.isNotBlank())
+        }
+    }
+
+    // ── SCN-REC-021: Generate error when template not found ───────────────────
+    @Test
+    fun `generate error when template does not exist`() = runTest {
+        coEvery { generateRecurringExpense(999L) } throws
+            NoSuchElementException("Recurring expense 999 not found")
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(999L)
+
+            val event = awaitItem() as RecurringNavEvent.ShowToast
+            assertEquals("Recurring expense 999 not found", event.message)
+        }
+
+        coVerify(inverse = true) { recordExpense(any()) }
+    }
+
+    // ── isGenerating guard: double-tap ────────────────────────────────────────
+    @Test
+    fun `isGenerating guard prevents double-tap generate`() = runTest {
+        coEvery { generateRecurringExpense(1L) } returns 0L
+
+        val vm = createVm()
+        assertEquals(false, vm.isGenerating.value)
+
+        vm.onGenerate(1L)
+
+        // With UnconfinedTestDispatcher, operation completes synchronously
+        coVerify(exactly = 1) { generateRecurringExpense(1L) }
+
+        // Second call immediately after — should not re-enter because first completed
+        vm.onGenerate(1L)
+        coVerify(exactly = 2) { generateRecurringExpense(1L) }
+    }
+
+    // ── Reactive Flow: generate updates list ──────────────────────────────────
+    @Test
+    fun `generate triggers reactive Flow re-emission`() = runTest {
+        coEvery { generateRecurringExpense(1L) } returns 0L
+        val templatesFlow = MutableStateFlow(sampleTemplates)
+        every { listRecurringExpenses() } returns templatesFlow
+
+        val vm = createVm()
+
+        vm.uiState.test {
+            val ready = awaitItem() as RecurringListUiState.Ready
+            assertEquals(5, ready.items.size)
+
+            vm.onGenerate(1L)
+
+            // generateRecurringExpense updates lastGeneratedDate internally;
+            // Room would re-emit. Simulate it.
+            val withUpdatedDate = sampleTemplates.map {
+                if (it.id == 1L) it.copy(lastGeneratedDate = LocalDate.now()) else it
+            }
+            templatesFlow.value = withUpdatedDate
+
+            val updated = awaitItem() as RecurringListUiState.Ready
+            assertEquals(5, updated.items.size)
+        }
+    }
+
+    // ── Generate success toast only ───────────────────────────────────────────
+    @Test
+    fun `generate success emits Gasto generado toast`() = runTest {
+        coEvery { generateRecurringExpense(1L) } returns 0L
+
+        val vm = createVm()
+
+        vm.navEvents.test {
+            vm.onGenerate(1L)
+
+            val event = awaitItem() as RecurringNavEvent.ShowToast
+            assertEquals("Gasto generado", event.message)
         }
     }
 }
