@@ -49,6 +49,7 @@ fun HomeScreen(
     onNavigateToRateManagement: () -> Unit = {},
     onNavigateToWalletManagement: () -> Unit = {},
     onNavigateToTransferManagement: () -> Unit = {},
+    onNavigateToRecurringManagement: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -85,6 +86,12 @@ fun HomeScreen(
                     IconButton(onClick = onNavigateToRateManagement) {
                         Text(
                             text = "\uD83D\uDCB1",
+                            style = MaterialTheme.typography.headlineSmall,
+                        )
+                    }
+                    IconButton(onClick = onNavigateToRecurringManagement) {
+                        Text(
+                            text = "\uD83D\uDD04",
                             style = MaterialTheme.typography.headlineSmall,
                         )
                     }

@@ -51,6 +51,7 @@ dependencies {
     implementation(project(":feature-category-management"))
     implementation(project(":feature-card-management"))
     implementation(project(":feature-stash-management"))
+    implementation(project(":feature-recurring-expense-management"))
     implementation(project(":feature-rate-management"))
     implementation(project(":feature-transfer-management"))
     implementation(project(":feature-wallet-management"))
