@@ -1,6 +1,7 @@
 package com.vida.feature.expenselist
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -24,12 +26,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -38,13 +47,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.math.BigDecimal
 
 /**
  * Expense detail screen — shows full expense info with edit (placeholder) and
- * delete actions.
+ * delete actions. Also loads and displays refund information when available.
  *
  * Uses [ExpenseDetailViewModel] to load the expense by ID (from the nav route
- * argument) and handles deletion via [DeleteExpense].
+ * argument) and handles deletion via [DeleteExpense] and refund CRUD.
  *
  * @param onNavigateBack Called after successful deletion or via toolbar back arrow.
  * @param viewModel Injected via Hilt with [SavedStateHandle] providing the "id" argument.
@@ -56,6 +66,13 @@ fun ExpenseDetailScreen(
     viewModel: ExpenseDetailViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val refundState by viewModel.refundState.collectAsStateWithLifecycle()
+
+    var showRefundDialog by remember { mutableStateOf(false) }
+    var editingRefund by remember { mutableStateOf<RefundDisplay?>(null) }
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(Unit) {
         viewModel.navigationEvents.collect { event ->
@@ -65,6 +82,12 @@ fun ExpenseDetailScreen(
                     // Future: navigate to edit screen.
                 }
             }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        viewModel.snackbarEvents.collect { event ->
+            snackbarHostState.showSnackbar(event.message)
         }
     }
 
@@ -82,6 +105,7 @@ fun ExpenseDetailScreen(
                 },
             )
         },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -164,6 +188,51 @@ fun ExpenseDetailScreen(
                             }
                         }
 
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // ── Refund section ──────────────────────────────────
+                        when (val refState = refundState) {
+                            is RefundUiState.Loading -> {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            }
+
+                            is RefundUiState.Ready -> {
+                                RefundCard(
+                                    refund = refState.refund,
+                                    onEdit = {
+                                        editingRefund = refState.refund
+                                        showRefundDialog = true
+                                    },
+                                    onDelete = { showDeleteConfirmation = true },
+                                )
+                            }
+
+                            is RefundUiState.Empty -> {
+                                OutlinedButton(
+                                    onClick = {
+                                        editingRefund = null
+                                        showRefundDialog = true
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    Text("Agregar reembolso")
+                                }
+                            }
+
+                            is RefundUiState.Error -> {
+                                Text(
+                                    text = refState.message,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.weight(1f))
                         Spacer(modifier = Modifier.height(24.dp))
 
@@ -209,6 +278,36 @@ fun ExpenseDetailScreen(
             }
         }
     }
+
+    // ── Dialogs ──────────────────────────────────────────────────────────
+    if (showRefundDialog) {
+        RefundFormDialog(
+            editingRefund = editingRefund,
+            onDismiss = {
+                showRefundDialog = false
+                editingRefund = null
+            },
+            onConfirm = { amount, reason, note ->
+                if (editingRefund != null) {
+                    viewModel.onEditRefund(amount, reason, note)
+                } else {
+                    viewModel.onAddRefund(amount, reason, note)
+                }
+                showRefundDialog = false
+                editingRefund = null
+            },
+        )
+    }
+
+    if (showDeleteConfirmation) {
+        DeleteConfirmationDialog(
+            onConfirm = {
+                viewModel.onDeleteRefund()
+                showDeleteConfirmation = false
+            },
+            onDismiss = { showDeleteConfirmation = false },
+        )
+    }
 }
 
 @Composable
@@ -228,4 +327,174 @@ private fun DetailRow(label: String, value: String) {
             style = MaterialTheme.typography.bodyMedium,
         )
     }
+}
+
+/** Refund info card with edit/delete actions. */
+@Composable
+private fun RefundCard(
+    refund: RefundDisplay,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+        ),
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Reembolso",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onTertiaryContainer,
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = refund.formattedAmount,
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.tertiary,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = refund.reason,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = refund.formattedDate,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (!refund.note.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = refund.note,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End,
+            ) {
+                OutlinedButton(onClick = onEdit) {
+                    Text("Editar")
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Button(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Text("Eliminar")
+                }
+            }
+        }
+    }
+}
+
+/** AlertDialog for adding or editing a refund. Pre-fills when [editingRefund] is non-null. */
+@Composable
+private fun RefundFormDialog(
+    editingRefund: RefundDisplay?,
+    onDismiss: () -> Unit,
+    onConfirm: (amount: BigDecimal, reason: String, note: String?) -> Unit,
+) {
+    var amountText by remember { mutableStateOf("") }
+    var reason by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var amountError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(editingRefund) {
+        if (editingRefund != null) {
+            amountText = editingRefund.amount.toPlainString()
+            reason = editingRefund.reason
+            note = editingRefund.note ?: ""
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(if (editingRefund != null) "Editar reembolso" else "Agregar reembolso")
+        },
+        text = {
+            Column {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = {
+                        amountText = it
+                        amountError = null
+                    },
+                    label = { Text("Monto") },
+                    isError = amountError != null,
+                    supportingText = amountError?.let { { Text(it) } },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { reason = it },
+                    label = { Text("Motivo") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = { Text("Nota (opcional)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val parsedAmount = amountText.toBigDecimalOrNull()
+                if (parsedAmount == null) {
+                    amountError = "Monto inválido"
+                    return@TextButton
+                }
+                if (reason.isBlank()) {
+                    return@TextButton
+                }
+                onConfirm(parsedAmount, reason, note.ifBlank { null })
+            }) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+/** AlertDialog for confirming refund deletion. */
+@Composable
+private fun DeleteConfirmationDialog(
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Eliminar reembolso") },
+        text = { Text("¿Estás seguro de eliminar este reembolso? Esta acción no se puede deshacer.") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Eliminar", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        },
+    )
 }
