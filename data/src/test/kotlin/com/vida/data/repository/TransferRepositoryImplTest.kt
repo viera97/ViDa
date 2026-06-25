@@ -105,7 +105,7 @@ class TransferRepositoryImplTest {
         fromType = SourceType.CARD,
         fromId = 5L,
         toType = SourceType.WALLET,
-        toId = null,
+        toId = 1L,
         amount = Money.of("100.00", Currency.CUP),
         dateTime = Instant.ofEpochMilli(5_000L),
         note = "test",

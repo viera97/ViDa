@@ -75,18 +75,18 @@ object TransferMapper {
         cardId: Long?,
         stashId: Long?,
         label: String,
-    ): Pair<SourceType, Long?> = when {
+    ): Pair<SourceType, Long> = when {
         cardId != null -> SourceType.CARD to cardId
         stashId != null -> SourceType.STASH to stashId
-        walletId != null -> SourceType.WALLET to null
+        walletId != null -> SourceType.WALLET to walletId
         else -> error("$label has no column set")
     }
 
     private fun encodeTriplet(
         type: SourceType,
-        id: Long?,
+        id: Long,
     ): Triple<Long?, Long?, Long?> = when (type) {
-        SourceType.WALLET -> Triple(1L, null, null)
+        SourceType.WALLET -> Triple(id, null, null)
         SourceType.CARD -> Triple(null, id, null)
         SourceType.STASH -> Triple(null, null, id)
     }

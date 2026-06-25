@@ -16,7 +16,6 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -82,7 +81,7 @@ class TransferOrchestratorIntegrationTest {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.CARD,
             toId = cardId,
             amount = Money.of("200.00", Currency.CUP),
@@ -103,7 +102,7 @@ class TransferOrchestratorIntegrationTest {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.STASH,
             toId = stashId,
             amount = Money.of("100.00", Currency.CUP),
@@ -144,7 +143,7 @@ class TransferOrchestratorIntegrationTest {
             fromType = SourceType.CARD,
             fromId = 999L, // non-existent card
             toType = SourceType.WALLET,
-            toId = null,
+            toId = 1L,
             amount = Money.of("100.00", Currency.CUP),
             dateTime = Instant.ofEpochMilli(4_000L),
             note = null,
@@ -168,7 +167,7 @@ class TransferOrchestratorIntegrationTest {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.STASH,
             toId = 999L, // non-existent stash
             amount = Money.of("100.00", Currency.CUP),

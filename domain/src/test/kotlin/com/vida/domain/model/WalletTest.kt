@@ -26,14 +26,4 @@ class WalletTest {
         assertEquals("B", c.name)
         assertEquals(Currency.CUP, a.currency)
     }
-
-    @Test
-    fun `constructor rejects non-singleton id`() {
-        try {
-            Wallet(id = 2L, currency = Currency.CUP)
-            assert(false) { "Expected IllegalArgumentException" }
-        } catch (e: IllegalArgumentException) {
-            // Expected
-        }
-    }
 }

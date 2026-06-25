@@ -46,7 +46,7 @@ class GetTotalBalanceTest {
 
         coEvery { cardRepo.getAll() } returns flowOf(emptyList<Card>())
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
-        coEvery { walletRepo.get() } throws NoSuchElementException("not seeded")
+        coEvery { walletRepo.getAll() } returns flowOf(emptyList<Wallet>())
 
         val total = newTotal(cardRepo, stashRepo, walletRepo, rateRepo).invoke()
         assertEquals(Money.ZERO_CUP, total)
@@ -61,8 +61,8 @@ class GetTotalBalanceTest {
 
         coEvery { cardRepo.getAll() } returns flowOf(emptyList<Card>())
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
-        coEvery { walletRepo.get() } returns Wallet(currency = Currency.USD)
-        coEvery { walletRepo.getBalance(now) } returns Money(BigDecimal.ONE, Currency.USD)
+        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.USD)))
+        coEvery { walletRepo.getBalance(1L, now) } returns Money(BigDecimal.ONE, Currency.USD)
         coEvery { rateRepo.getRate(Currency.USD, Currency.CUP, now) } returns
             CurrencyRate(
                 fromCurrency = Currency.USD,
@@ -93,8 +93,8 @@ class GetTotalBalanceTest {
         )
         coEvery { cardRepo.getAll() } returns flowOf(listOf(mlcCard))
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
-        coEvery { walletRepo.get() } returns Wallet(currency = Currency.CUP)
-        coEvery { walletRepo.getBalance(now) } returns Money(BigDecimal("100.00"), Currency.CUP)
+        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.CUP)))
+        coEvery { walletRepo.getBalance(1L, now) } returns Money(BigDecimal("100.00"), Currency.CUP)
         coEvery { cardRepo.getBalance(7L, now) } returns Money(BigDecimal("50"), Currency.MLC)
         coEvery { rateRepo.getRate(Currency.MLC, Currency.CUP, now) } returns null
 

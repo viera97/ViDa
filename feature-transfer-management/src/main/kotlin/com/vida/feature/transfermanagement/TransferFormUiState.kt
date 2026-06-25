@@ -47,7 +47,7 @@ sealed interface TransferFormUiState {
  * Mirrors `com.vida.feature.expense.SourceItem` to keep the `:feature-transfer-management`
  * module independent (design decision B).
  *
- * @property id Entity id; null only for [SourceType.WALLET] (the singleton).
+ * @property id Entity id; the row id of the corresponding wallet/card/stash.
  * @property type Which kind of source this is.
  * @property name Display name (e.g. "Billetera", "Banco kubo", "Ahorro vacaciones").
  * @property currency The source's native currency.
@@ -55,7 +55,7 @@ sealed interface TransferFormUiState {
  * @property subtitle Optional supplementary text (e.g. masked card number).
  */
 data class TransferSourceItem(
-    val id: Long?,
+    val id: Long,
     val type: SourceType,
     val name: String,
     val currency: Currency,

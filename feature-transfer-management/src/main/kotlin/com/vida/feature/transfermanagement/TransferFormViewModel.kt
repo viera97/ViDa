@@ -2,20 +2,25 @@ package com.vida.feature.transfermanagement
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vida.domain.model.Card
 import com.vida.domain.model.Money
 import com.vida.domain.model.SourceType
+import com.vida.domain.model.Stash
 import com.vida.domain.model.Transfer
+import com.vida.domain.model.Wallet
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.transfer.RecordTransfer
-import com.vida.domain.usecase.wallet.GetWallet
+import com.vida.domain.usecase.wallet.ListWallets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
@@ -25,15 +30,20 @@ import javax.inject.Inject
 /**
  * ViewModel for the transfer creation form.
  *
- * Loads all available sources (wallet + cards + stashes) on init via
- * [GetWallet], [ListCards], and [ListStashes] (provided by HomeModule/ExpenseModule
- * in the same [dagger.hilt.android.components.ViewModelComponent]).
+ * Subscribes to the reactive [ListWallets], [ListCards], and [ListStashes]
+ * flows and keeps the available sources list in sync — additions or deletions
+ * made elsewhere in the app (e.g. a new card added from FuentesScreen) are
+ * reflected in the form immediately, no restart required.
+ *
+ * Existing user selections are preserved across source updates as long as the
+ * selected source still exists in the new list. If a selected source is
+ * deleted, that selection is cleared silently.
  *
  * Submits valid transfers via [RecordTransfer] (provided by [di.TransferModule]).
  *
  * State transitions:
  * ```
- * Idle → Ready | EmptySourceList | Error   (loadSources)
+ * Idle → Ready | EmptySourceList | Error   (observeSources)
  * Ready → Saved      (submit success)
  * Ready → Error      (submit failure)
  * Error → Idle → Ready | EmptySourceList   (retry)
@@ -53,7 +63,7 @@ class TransferFormViewModel @Inject constructor(
     private val recordTransfer: RecordTransfer,
     private val listCards: ListCards,
     private val listStashes: ListStashes,
-    private val getWallet: GetWallet,
+    private val listWallets: ListWallets,
 ) : ViewModel() {
 
     private val _uiState =
@@ -69,8 +79,11 @@ class TransferFormViewModel @Inject constructor(
     /** Cached last valid Ready state — used to recover form data from Error. */
     private var lastReadyState: TransferFormUiState.Ready? = null
 
+    /** Tracks the active source-observation coroutine so [retry] can replace it. */
+    private var sourceObservationJob: Job? = null
+
     init {
-        loadSources()
+        observeSources()
     }
 
     // ── Input handlers ──────────────────────────────────────────────────────
@@ -195,88 +208,194 @@ class TransferFormViewModel @Inject constructor(
     // ── Error recovery ──────────────────────────────────────────────────────
 
     /**
-     * Re-loads all sources from the current [TransferFormUiState.Error] state.
+     * Re-subscribes to the source flows and replaces any current state.
      *
-     * Resets the form entirely — no form data is preserved across retry.
+     * Cancels any in-flight observation job and starts a fresh one. The form
+     * data is reset — no fields are preserved across retry.
      */
     fun retry() {
-        loadSources()
+        observeSources()
+    }
+
+    /**
+     * Clears the form fields and restarts the source observation so the next
+     * time the modal opens, the user starts with a fresh empty form.
+     *
+     * Behavior:
+     * - If the current state is [TransferFormUiState.Ready], clears De/A
+     *   selections, amount, note, and validation errors in-place. The
+     *   current source list is preserved so the user does not see a loading
+     *   spinner when the dialog is immediately reopened.
+     * - Otherwise (Idle, Error, EmptySourceList, Saved), cancels the
+     *   in-flight observation and starts a fresh one — this guarantees the
+     *   dialog will receive the latest sources when reopened, even if the
+     *   reactive flow has not emitted since the previous error.
+     *
+     * The reactive [observeSources] subscription picks up new emissions and
+     * preserves the freshly-cleared form fields as long as selected sources
+     * remain in the source list (which they will not — selections are null
+     * after reset).
+     */
+    fun reset() {
+        val currentReady = _uiState.value as? TransferFormUiState.Ready
+        if (currentReady != null) {
+            val fresh = currentReady.copy(
+                deSource = null,
+                aSource = null,
+                amount = "",
+                dateTime = Instant.now(),
+                note = "",
+                validationErrors = emptyMap(),
+            )
+            lastReadyState = fresh
+            _uiState.value = fresh
+        } else {
+            lastReadyState = null
+            // Re-trigger observation so the dialog does not show a stale
+            // loading state when reopened.
+            observeSources()
+        }
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
     /**
-     * Fetches wallet + cards + stashes and builds the source list.
+     * Subscribes to [listWallets], [listCards], and [listStashes] flows and
+     * keeps [uiState] in sync with the latest combined source list.
      *
-     * - [NoSuchElementException] from [GetWallet] is NOT treated as an error;
-     *   it means no wallet has been seeded, which can be combined with empty
-     *   cards/stashes to produce [TransferFormUiState.EmptySourceList].
-     * - Any other exception during fetch → [TransferFormUiState.Error].
-     * - If total sources == 0 → [TransferFormUiState.EmptySourceList].
-     * - Otherwise → [TransferFormUiState.Ready] with the full source list.
+     * Replaces any previous observation job so that [retry] can restart the
+     * subscription cleanly. The first emission transitions the state from
+     * [TransferFormUiState.Idle] to [TransferFormUiState.Ready] (or
+     * [TransferFormUiState.EmptySourceList] / [TransferFormUiState.Error]).
+     *
+     * Any subsequent emission rebuilds the source list and preserves the
+     * user's current selections as long as they still exist; selections whose
+     * source has been deleted are cleared silently.
      */
-    private fun loadSources() {
-        viewModelScope.launch {
+    private fun observeSources() {
+        sourceObservationJob?.cancel()
+        sourceObservationJob = viewModelScope.launch {
             _uiState.value = TransferFormUiState.Idle
+            // Wraps the combine() chain in try-catch so synchronous throws
+            // from the use case providers (listWallets(), listCards(),
+            // listStashes()) are also routed to Error. Flow's .catch only
+            // covers errors during collection; throws from provider invoke
+            // happen BEFORE .catch mounts and would otherwise leave the VM
+            // stuck in Idle forever.
             try {
-                val wallet = try {
-                    getWallet()
-                } catch (e: NoSuchElementException) {
-                    null
+                combine(
+                    listWallets(),
+                    listCards(),
+                    listStashes(),
+                ) { wallets, cards, stashes ->
+                    buildSourceList(wallets, cards, stashes)
                 }
-                val cards = listCards().first()
-                val stashes = listStashes().first()
-
-                val sources = buildList {
-                    if (wallet != null) {
-                        add(
-                            TransferSourceItem(
-                                id = null,
-                                type = SourceType.WALLET,
-                                name = "Billetera",
-                                currency = wallet.currency,
-                                icon = "\uD83D\uDCB0",
-                            ),
+                    .catch { t ->
+                        if (t is CancellationException) throw t
+                        _uiState.value = TransferFormUiState.Error(
+                            t.message ?: "Error al cargar el formulario",
                         )
                     }
-                    for (card in cards) {
-                        add(
-                            TransferSourceItem(
-                                id = card.id,
-                                type = SourceType.CARD,
-                                name = card.bank,
-                                currency = card.currency,
-                                icon = "\u2660\uFE0F",
-                                subtitle = "···${card.number.masked.substring(12, 16)}",
-                            ),
-                        )
+                    .collect { sources ->
+                        applySources(sources)
                     }
-                    for (stash in stashes) {
-                        add(
-                            TransferSourceItem(
-                                id = stash.id,
-                                type = SourceType.STASH,
-                                name = stash.name,
-                                currency = stash.currency,
-                                icon = "\uD83D\uDC8E",
-                            ),
-                        )
-                    }
-                }
-
-                if (sources.isEmpty()) {
-                    _uiState.value = TransferFormUiState.EmptySourceList
-                } else {
-                    val ready = TransferFormUiState.Ready(sources = sources)
-                    lastReadyState = ready
-                    _uiState.value = ready
-                }
+            } catch (t: CancellationException) {
+                throw t
             } catch (t: Throwable) {
-                if (t is CancellationException) throw t
                 _uiState.value = TransferFormUiState.Error(
                     t.message ?: "Error al cargar el formulario",
                 )
             }
+        }
+    }
+
+    /**
+     * Applies a fresh source list to [uiState], preserving user selections
+     * (amount, note, datetime, validation errors) when they are still valid.
+     *
+     * - Empty [newSources] → [TransferFormUiState.EmptySourceList].
+     * - Otherwise → [TransferFormUiState.Ready] with merged state.
+     * - Selections whose source no longer exists are cleared silently.
+     */
+    private fun applySources(newSources: List<TransferSourceItem>) {
+        if (newSources.isEmpty()) {
+            lastReadyState = null
+            _uiState.value = TransferFormUiState.EmptySourceList
+            return
+        }
+
+        val currentReady = _uiState.value as? TransferFormUiState.Ready
+        val preserved = lastReadyState
+
+        // Preserve current user selections if the selected source still
+        // exists in the new list; clear it otherwise.
+        val preservedDe = (currentReady?.deSource ?: preserved?.deSource)?.takeIf { sel ->
+            newSources.any { it.id == sel.id && it.type == sel.type }
+        }
+        val preservedA = (currentReady?.aSource ?: preserved?.aSource)?.takeIf { sel ->
+            newSources.any { it.id == sel.id && it.type == sel.type }
+        }
+
+        val updated = TransferFormUiState.Ready(
+            sources = newSources,
+            deSource = preservedDe,
+            aSource = preservedA,
+            amount = currentReady?.amount ?: preserved?.amount ?: "",
+            dateTime = currentReady?.dateTime ?: preserved?.dateTime ?: Instant.now(),
+            note = currentReady?.note ?: preserved?.note ?: "",
+            validationErrors = currentReady?.validationErrors
+                ?: preserved?.validationErrors
+                ?: emptyMap(),
+        )
+        lastReadyState = updated
+        _uiState.value = updated
+    }
+
+    /**
+     * Maps raw wallet/card/stash data into UI-ready [TransferSourceItem]s in
+     * display order (wallets first, then cards, then stashes).
+     */
+    private fun buildSourceList(
+        wallets: List<Wallet>,
+        cards: List<Card>,
+        stashes: List<Stash>,
+    ): List<TransferSourceItem> = buildList {
+        for (wallet in wallets) {
+            add(
+                TransferSourceItem(
+                    id = wallet.id,
+                    type = SourceType.WALLET,
+                    name = wallet.name,
+                    currency = wallet.currency,
+                    icon = "\uD83D\uDCB0",
+                ),
+            )
+        }
+        for (card in cards) {
+            add(
+                TransferSourceItem(
+                    id = card.id,
+                    type = SourceType.CARD,
+                    // Use the user-defined "Nombre de tarjeta" as the
+                    // primary identifier (matches wallet behavior); fall
+                    // back to the bank name when no custom name was set.
+                    name = card.note ?: card.bank,
+                    currency = card.currency,
+                    icon = "\u2660\uFE0F",
+                    subtitle = "···${card.number.masked.substring(12, 16)}",
+                ),
+            )
+        }
+        for (stash in stashes) {
+            add(
+                TransferSourceItem(
+                    id = stash.id,
+                    type = SourceType.STASH,
+                    name = stash.name,
+                    currency = stash.currency,
+                    icon = "\uD83D\uDC8E",
+                ),
+            )
         }
     }
 

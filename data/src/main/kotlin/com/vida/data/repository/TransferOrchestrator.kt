@@ -49,25 +49,39 @@ class TransferOrchestrator @Inject constructor(
             transferDao.upsert(transferMapper.toEntity(transfer))
         }
 
-    private suspend fun verifySource(type: SourceType, id: Long?) {
+    /**
+     * Confirms the source side of [Transfer] refers to an existing entity.
+     *
+     * All source kinds — wallet, card, stash — are looked up by id. The wallet
+     * is just another source row in the `wallets` table; it has its own id and
+     * is verified the same way as a card or stash.
+     */
+    private suspend fun verifySource(type: SourceType, id: Long) {
         when (type) {
             SourceType.WALLET ->
-                checkNotNull(walletDao.get()) { "Wallet not found — call upsert first" }
+                checkNotNull(walletDao.getById(id)) { "Wallet $id not found" }
             SourceType.CARD ->
-                checkNotNull(cardDao.getById(id!!)) { "Card $id not found" }
+                checkNotNull(cardDao.getById(id)) { "Card $id not found" }
             SourceType.STASH ->
-                checkNotNull(stashDao.getById(id!!)) { "Stash $id not found" }
+                checkNotNull(stashDao.getById(id)) { "Stash $id not found" }
         }
     }
 
-    private suspend fun verifyDestination(type: SourceType, id: Long?) {
+    /**
+     * Confirms the destination side of [Transfer] refers to an existing entity.
+     *
+     * All destination kinds — wallet, card, stash — are looked up by id. The
+     * wallet is just another source row in the `wallets` table; it has its own
+     * id and is verified the same way as a card or stash.
+     */
+    private suspend fun verifyDestination(type: SourceType, id: Long) {
         when (type) {
             SourceType.WALLET ->
-                checkNotNull(walletDao.get()) { "Wallet not found — call upsert first" }
+                checkNotNull(walletDao.getById(id)) { "Wallet $id not found" }
             SourceType.CARD ->
-                checkNotNull(cardDao.getById(id!!)) { "Card $id not found" }
+                checkNotNull(cardDao.getById(id)) { "Card $id not found" }
             SourceType.STASH ->
-                checkNotNull(stashDao.getById(id!!)) { "Stash $id not found" }
+                checkNotNull(stashDao.getById(id)) { "Stash $id not found" }
         }
     }
 }

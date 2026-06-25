@@ -261,7 +261,7 @@ class BalanceDaoTest {
         )
 
         // Wallet: -50000 (transfer out); Card: +50000 (transfer in). Both CUP → rate 1.0.
-        assertEquals(-50_000L, dao.getWalletBalance(10_000L).first()!!.totalCupMinor)
+        assertEquals(-50_000L, dao.getWalletBalance(1L, 10_000L).first()!!.totalCupMinor)
         assertEquals(50_000L, dao.getCardBalance(cupCardId, 10_000L).first()!!.totalCupMinor)
     }
 
@@ -273,9 +273,9 @@ class BalanceDaoTest {
         seedExpense(sourceWalletId = 1L, amountMinor = 50_000L, currency = "CUP", dateTime = 5_000L)
 
         // asOf=2_000 only includes the 100_000 expense (dateTime=1_000); the 50_000 (dateTime=5_000) is excluded.
-        assertEquals(-100_000L, dao.getWalletBalance(2_000L).first()!!.totalCupMinor)
+        assertEquals(-100_000L, dao.getWalletBalance(1L, 2_000L).first()!!.totalCupMinor)
         // asOf=10_000 includes both: -100000 - 50000 = -150000
-        assertEquals(-150_000L, dao.getWalletBalance(10_000L).first()!!.totalCupMinor)
+        assertEquals(-150_000L, dao.getWalletBalance(1L, 10_000L).first()!!.totalCupMinor)
     }
 
     @Test
@@ -334,8 +334,8 @@ class BalanceDaoTest {
 
     @Test
     fun `getWalletBalance with no wallet row returns 0`() = runTest {
-        // No wallet seeded — singleton row absent.
-        assertEquals(0L, dao.getWalletBalance(10_000L).first()!!.totalCupMinor)
+        // No wallet seeded — no rows contribute to balance.
+        assertEquals(0L, dao.getWalletBalance(1L, 10_000L).first()!!.totalCupMinor)
     }
 
     // --- Seed helpers ---

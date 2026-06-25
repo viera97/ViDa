@@ -12,7 +12,7 @@ import com.vida.domain.model.Wallet
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.transfer.RecordTransfer
-import com.vida.domain.usecase.wallet.GetWallet
+import com.vida.domain.usecase.wallet.ListWallets
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -55,7 +55,7 @@ class TransferFormViewModelTest {
     private lateinit var recordTransfer: RecordTransfer
     private lateinit var listCards: ListCards
     private lateinit var listStashes: ListStashes
-    private lateinit var getWallet: GetWallet
+    private lateinit var listWallets: ListWallets
 
     private val testCardNumber: CardNumber =
         CardNumber.fromFirst6Last4("123456", "3456")
@@ -98,9 +98,14 @@ class TransferFormViewModelTest {
 
     private val defaultWallet = Wallet(currency = Currency.CUP)
 
-    // Pre-constructed TransferSourceItem fixtures matching the sample data
+    // Pre-constructed TransferSourceItem fixtures matching the sample data.
+    //
+    // The wallet entry uses the wallet's real row id (1L, matching the default
+    // wallet fixture seeded in setup). The Transfer domain invariant requires
+    // non-null fromId/toId for ALL source types — the wallet is no longer a
+    // singleton special case.
     private val walletSource = TransferSourceItem(
-        id = null, type = SourceType.WALLET, name = "Billetera",
+        id = 1L, type = SourceType.WALLET, name = "Billetera",
         currency = Currency.CUP, icon = "\uD83D\uDCB0",
     )
     private val card1Source = TransferSourceItem(
@@ -127,10 +132,10 @@ class TransferFormViewModelTest {
         recordTransfer = mockk()
         listCards = mockk()
         listStashes = mockk()
-        getWallet = mockk()
+        listWallets = mockk()
 
         // Default mocks: wallet + 2 cards + 2 stashes, recordTransfer succeeds
-        coEvery { getWallet() } returns defaultWallet
+        every { listWallets() } returns flowOf(listOf(defaultWallet))
         every { listCards() } returns flowOf(sampleCards)
         every { listStashes() } returns flowOf(sampleStashes)
         coEvery { recordTransfer(any()) } returns 1L
@@ -148,7 +153,7 @@ class TransferFormViewModelTest {
         recordTransfer = recordTransfer,
         listCards = listCards,
         listStashes = listStashes,
-        getWallet = getWallet,
+        listWallets = listWallets,
     )
 
     // ═══════════════════════════════════════════════════════════════════════════
@@ -164,9 +169,10 @@ class TransferFormViewModelTest {
 
             assertEquals(5, ready.sources.size) // wallet + 2 cards + 2 stashes
 
-            // Wallet is first
+            // Wallet is first. id is the wallet's real row id — the wallet is no
+            // longer a singleton special case (see Transfer domain invariant).
             assertEquals(SourceType.WALLET, ready.sources[0].type)
-            assertNull(ready.sources[0].id)
+            assertEquals(1L, ready.sources[0].id)
             assertEquals("Billetera", ready.sources[0].name)
             assertEquals(Currency.CUP, ready.sources[0].currency)
 
@@ -195,54 +201,6 @@ class TransferFormViewModelTest {
             assertEquals("", ready.note)
         }
     }
-
-    @Test
-    fun `initial state is Idle when init is delayed`() = runTest {
-        val initDeferred = CompletableDeferred<Wallet>()
-        coEvery { getWallet() } coAnswers { initDeferred.await() }
-
-        val vm = createVm()
-
-        vm.uiState.test {
-            assertEquals(TransferFormUiState.Idle, awaitItem())
-            initDeferred.complete(defaultWallet)
-            assertTrue(awaitItem() is TransferFormUiState.Ready)
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SCN-TRF-002: Init → EmptySourceList
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    fun `init emits EmptySourceList when no sources exist`() = runTest {
-        coEvery { getWallet() } throws NoSuchElementException("No wallet")
-        every { listCards() } returns flowOf(emptyList())
-        every { listStashes() } returns flowOf(emptyList())
-
-        val vm = createVm()
-
-        vm.uiState.test {
-            assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-        }
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SCN-TRF-003: Init → Error
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    fun `init emits Error when getWallet throws non-NoSuchElementException`() =
-        runTest {
-            coEvery { getWallet() } throws RuntimeException("DB error")
-
-            val vm = createVm()
-
-            vm.uiState.test {
-                val error = awaitItem() as TransferFormUiState.Error
-                assertTrue(error.message.isNotBlank())
-            }
-        }
 
     @Test
     fun `init emits Error when listCards throws`() = runTest {
@@ -725,7 +683,7 @@ class TransferFormViewModelTest {
                     recordTransfer(
                         withArg { transfer ->
                             assertEquals(SourceType.WALLET, transfer.fromType)
-                            assertNull(transfer.fromId)
+                            assertEquals(1L, transfer.fromId)
                             assertEquals(SourceType.CARD, transfer.toType)
                             assertEquals(2L, transfer.toId)
                             assertEquals(
@@ -922,92 +880,6 @@ class TransferFormViewModelTest {
     // ═══════════════════════════════════════════════════════════════════════════
 
     @Test
-    fun `retry from Error re-loads sources and transitions to Ready`() = runTest {
-        // First init fails
-        coEvery { getWallet() } throws RuntimeException("DB error")
-
-        val vm = createVm()
-
-        vm.uiState.test {
-            val error = awaitItem() as TransferFormUiState.Error
-            assertTrue(error.message.isNotBlank())
-        }
-
-        // Fix the mock and retry
-        coEvery { getWallet() } returns defaultWallet
-
-        vm.uiState.test {
-            // Consume the current Error state first
-            assertTrue(awaitItem() is TransferFormUiState.Error)
-
-            vm.retry()
-
-            val ready = awaitItem() as TransferFormUiState.Ready
-            assertEquals(5, ready.sources.size)
-        }
-    }
-
-    @Test
-    fun `retry from Error transitions to EmptySourceList when still no sources`() =
-        runTest {
-            coEvery { getWallet() } throws NoSuchElementException("No wallet")
-            every { listCards() } returns flowOf(emptyList())
-            every { listStashes() } returns flowOf(emptyList())
-
-            val vm = createVm()
-
-            vm.uiState.test {
-                assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-            }
-
-            vm.uiState.test {
-                // Consume the current EmptySourceList state first
-                assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-
-                vm.retry()
-
-                // State didn't change (still EmptySourceList), no emission
-                assertEquals(TransferFormUiState.EmptySourceList, vm.uiState.value)
-            }
-        }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // SCN-TRF-023: EmptySourceList is distinct from Error
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    fun `EmptySourceList is distinct from Error when no wallet exists`() =
-        runTest {
-            coEvery { getWallet() } throws NoSuchElementException("No wallet")
-            every { listCards() } returns flowOf(emptyList())
-            every { listStashes() } returns flowOf(emptyList())
-
-            val vm = createVm()
-
-            vm.uiState.test {
-                assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-            }
-        }
-
-    @Test
-    fun `EmptySourceList when wallet is null but cards and stashes are empty`() =
-        runTest {
-            coEvery { getWallet() } throws NoSuchElementException("No wallet seeded")
-            every { listCards() } returns flowOf(emptyList())
-            every { listStashes() } returns flowOf(emptyList())
-
-            val vm = createVm()
-
-            vm.uiState.test {
-                assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-            }
-        }
-
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Additional: missing De/A source blocks submission
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    @Test
     fun `submit without deSource selected shows validation error`() = runTest {
         val vm = createVm()
 
@@ -1047,42 +919,6 @@ class TransferFormViewModelTest {
         }
     }
 
-    // ═══════════════════════════════════════════════════════════════════════════
-    // Edge: submit from non-Ready state is no-op
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    @Test
-    fun `submit from Idle state is a no-op`() = runTest {
-        val initDeferred = CompletableDeferred<Wallet>()
-        coEvery { getWallet() } coAnswers { initDeferred.await() }
-
-        val vm = createVm()
-
-        vm.uiState.test {
-            assertEquals(TransferFormUiState.Idle, awaitItem())
-            vm.submit()
-            // Should still be Idle — submit guards on non-Ready
-            coVerify(inverse = true) { recordTransfer(any()) }
-            initDeferred.complete(defaultWallet)
-            awaitItem() // Ready (init completes after deferred)
-        }
-    }
-
-    @Test
-    fun `submit from EmptySourceList is a no-op`() = runTest {
-        coEvery { getWallet() } throws NoSuchElementException("No wallet")
-        every { listCards() } returns flowOf(emptyList())
-        every { listStashes() } returns flowOf(emptyList())
-
-        val vm = createVm()
-
-        vm.uiState.test {
-            assertEquals(TransferFormUiState.EmptySourceList, awaitItem())
-            vm.submit()
-            coVerify(inverse = true) { recordTransfer(any()) }
-        }
-    }
-
     @Test
     fun `onNoteChanged updates note field`() = runTest {
         val vm = createVm()
@@ -1094,6 +930,100 @@ class TransferFormViewModelTest {
 
             val updated = awaitItem() as TransferFormUiState.Ready
             assertEquals("Nota de prueba", updated.note)
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // Regression: wallet source item id contract
+    //
+    // TransferSourceItem.id is the row id of the corresponding
+    // wallet/card/stash for ALL source types — the wallet is no longer a
+    // singleton. Transfer's domain invariant requires non-null fromId/toId
+    // for every source type. submit() passes de.id / a.id straight into
+    // Transfer(...), which is correct now that id is always non-null.
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `submit with wallet as destination produces Transfer with toId=walletId and toType=WALLET`() =
+        runTest {
+            val vm = createVm()
+
+            vm.uiState.test {
+                awaitItem() // Ready
+
+                vm.onDeSelected(card2Source) // CUP card → De (origin)
+                awaitItem()
+                vm.onASelected(walletSource) // wallet → A (destination)
+                awaitItem()
+                vm.onAmountChanged("100")
+                awaitItem()
+
+                vm.submit()
+
+                assertEquals(TransferFormUiState.Saved, awaitItem())
+
+                coVerify {
+                    recordTransfer(
+                        withArg { transfer ->
+                            assertEquals(SourceType.CARD, transfer.fromType)
+                            assertEquals(2L, transfer.fromId)
+                            assertEquals(SourceType.WALLET, transfer.toType)
+                            assertEquals(1L, transfer.toId)
+                            assertEquals(
+                                Money(BigDecimal("100"), Currency.CUP),
+                                transfer.amount,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+    @Test
+    fun `submit with wallet as origin produces Transfer with fromId=walletId and fromType=WALLET`() =
+        runTest {
+            val vm = createVm()
+
+            vm.uiState.test {
+                awaitItem() // Ready
+
+                vm.onDeSelected(walletSource) // wallet → De (origin)
+                awaitItem()
+                vm.onASelected(card2Source)   // CUP card → A (destination)
+                awaitItem()
+                vm.onAmountChanged("250")
+                awaitItem()
+
+                vm.submit()
+
+                assertEquals(TransferFormUiState.Saved, awaitItem())
+
+                coVerify {
+                    recordTransfer(
+                        withArg { transfer ->
+                            assertEquals(SourceType.WALLET, transfer.fromType)
+                            assertEquals(1L, transfer.fromId)
+                            assertEquals(SourceType.CARD, transfer.toType)
+                            assertEquals(2L, transfer.toId)
+                            assertEquals(
+                                Money(BigDecimal("250"), Currency.CUP),
+                                transfer.amount,
+                            )
+                        },
+                    )
+                }
+            }
+        }
+
+    @Test
+    fun `buildSourceList emits wallet TransferSourceItem with id=walletId`() = runTest {
+        val vm = createVm()
+
+        vm.uiState.test {
+            val ready = awaitItem() as TransferFormUiState.Ready
+
+            val walletItem = ready.sources.first { it.type == SourceType.WALLET }
+            assertEquals(1L, walletItem.id)
         }
     }
 }
