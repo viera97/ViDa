@@ -27,8 +27,13 @@ import javax.inject.Inject
 /**
  * ViewModel for the currency rate list screen.
  *
- * On init, loads all rates via [ListCurrencyRates], sorts them by pair
- * (from→to ascending) then updatedAt DESC, and emits [RateListUiState].
+ * On init, loads all rates via [ListCurrencyRates], normalizes them into
+ * [RateDisplayItem]s (each carrying its inverse rate when present), and emits
+ * [RateListUiState].
+ *
+ * Inverse rate convention: whenever a rate X → Y is added or edited, the
+ * matching Y → X rate (with `rate = 1 / rate`) is created/updated with the
+ * same provider and date. Both are deleted together when either is removed.
  *
  * Exposes one-shot [RateNavEvent]s via a [Channel] for transient messages
  * (toasts, snackbars).
@@ -54,6 +59,9 @@ class RateListViewModel @Inject constructor(
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    /** In-memory cache of all rates, kept up-to-date with [loadRates]. */
+    private var cachedRates: List<CurrencyRate> = emptyList()
+
     init {
         loadRates()
     }
@@ -61,11 +69,13 @@ class RateListViewModel @Inject constructor(
     // ── Public actions ───────────────────────────────────────────────────────
 
     /**
-     * Adds a new currency rate.
+     * Adds a new currency rate AND its inverse (to → from) for the same
+     * provider and date.
      *
-     * Validation: [from] != [to], [rate] > 0, [isSaving] guard.
-     * On success the list is refetched and [RateNavEvent.SaveSuccess] is emitted
-     * (which closes the dialog). On error a toast is shown and the list is preserved.
+     * Validation: [from] != [to], [rate] > 0, [isSaving] guard. Duplicate
+     * check is `(from, to, provider)` — if it fails, no insert is performed.
+     * On success the list is refetched and [RateNavEvent.SaveSuccess] is
+     * emitted. On error a toast is shown and the list is preserved.
      */
     fun onAdd(from: Currency, to: Currency, rate: BigDecimal, updatedAt: Instant, provider: String) {
         if (_isSaving.value) return
@@ -75,6 +85,19 @@ class RateListViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             try {
+                // Duplicate check on the primary pair
+                val existingRates = listCurrencyRates().first()
+                val isDuplicate = existingRates.any { r ->
+                    r.fromCurrency == from &&
+                        r.toCurrency == to &&
+                        r.provider == provider
+                }
+                if (isDuplicate) {
+                    _navEvents.send(RateNavEvent.DuplicateRate)
+                    return@launch
+                }
+
+                // 1. Insert primary
                 addCurrencyRate(
                     CurrencyRate(
                         id = 0L,
@@ -85,6 +108,24 @@ class RateListViewModel @Inject constructor(
                         provider = provider,
                     ),
                 )
+
+                // 2. Insert inverse (rate = 1 / rate). Don't fail the whole
+                //    operation if the inverse insert fails — the primary is
+                //    already saved and the user can re-edit to fix the inverse.
+                val inverseRate = inverseOf(rate)
+                runCatching {
+                    addCurrencyRate(
+                        CurrencyRate(
+                            id = 0L,
+                            fromCurrency = to,
+                            toCurrency = from,
+                            rate = inverseRate,
+                            updatedAt = updatedAt,
+                            provider = provider,
+                        ),
+                    )
+                }
+
                 loadRates()
                 _navEvents.send(RateNavEvent.SaveSuccess)
                 _navEvents.send(RateNavEvent.ShowToast("Tasa agregada"))
@@ -102,10 +143,13 @@ class RateListViewModel @Inject constructor(
     }
 
     /**
-     * Updates an existing currency rate with [id].
+     * Updates an existing currency rate (and its inverse, if any) with [id].
      *
-     * All four fields are editable; no [GetCurrencyRate] use case is needed
-     * because no hidden fields exist. Reconstructs [CurrencyRate] from parameters.
+     * The primary rate is always updated. The inverse is recomputed from
+     * the new rate: if an inverse already exists in storage, it's updated;
+     * if not, it's created. If the user changed the (from, to) pair, the
+     * stale inverse (matching the OLD from/to) is also removed to keep
+     * storage consistent.
      */
     fun onEdit(
         id: Long,
@@ -122,6 +166,11 @@ class RateListViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             try {
+                val existing = cachedRates.firstOrNull { it.id == id }
+                val oldFrom = existing?.fromCurrency
+                val oldTo = existing?.toCurrency
+
+                // 1. Update primary
                 updateCurrencyRate(
                     CurrencyRate(
                         id = id,
@@ -132,6 +181,47 @@ class RateListViewModel @Inject constructor(
                         provider = provider,
                     ),
                 )
+
+                // 2. Refresh inverse: find existing one for the NEW pair, if any
+                val current = listCurrencyRates().first()
+                val newInverse = current.firstOrNull {
+                    it.fromCurrency == to && it.toCurrency == from
+                }
+                val newInverseRate = inverseOf(rate)
+                if (newInverse != null) {
+                    runCatching {
+                        updateCurrencyRate(
+                            newInverse.copy(
+                                rate = newInverseRate,
+                                updatedAt = updatedAt,
+                                provider = provider,
+                            ),
+                        )
+                    }
+                } else {
+                    runCatching {
+                        addCurrencyRate(
+                            CurrencyRate(
+                                id = 0L,
+                                fromCurrency = to,
+                                toCurrency = from,
+                                rate = newInverseRate,
+                                updatedAt = updatedAt,
+                                provider = provider,
+                            ),
+                        )
+                    }
+                }
+
+                // 3. If the (from, to) pair changed, the OLD inverse is now
+                //    stale and must be removed.
+                if (oldFrom != null && oldTo != null && (oldFrom != from || oldTo != to)) {
+                    val staleInverse = current.firstOrNull {
+                        it.fromCurrency == oldTo && it.toCurrency == oldFrom
+                    }
+                    staleInverse?.let { runCatching { deleteCurrencyRate(it.id) } }
+                }
+
                 loadRates()
                 _navEvents.send(RateNavEvent.SaveSuccess)
                 _navEvents.send(RateNavEvent.ShowToast("Tasa actualizada"))
@@ -149,7 +239,7 @@ class RateListViewModel @Inject constructor(
     }
 
     /**
-     * Deletes the rate with [id].
+     * Deletes the rate with [id] AND its inverse (to → from) if present.
      *
      * On success, the list is refetched and a success toast is emitted.
      * On error, the current list is preserved and an error toast is shown.
@@ -165,11 +255,14 @@ class RateListViewModel @Inject constructor(
         viewModelScope.launch {
             isDeleting = true
             try {
+                // Delete primary
                 deleteCurrencyRate(id)
+                // Delete inverse if present
+                item.inverse?.let { inv ->
+                    runCatching { deleteCurrencyRate(inv.id) }
+                }
                 loadRates()
-                _navEvents.send(
-                    RateNavEvent.ShowToast("Tasa eliminada"),
-                )
+                _navEvents.send(RateNavEvent.ShowToast("Tasa eliminada"))
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
                 _navEvents.send(
@@ -188,22 +281,45 @@ class RateListViewModel @Inject constructor(
         loadRates()
     }
 
+    /**
+     * Returns the most recent [CurrencyRate] for the given pair, or null if
+     * no rate has been configured.
+     *
+     * Used by [ConverterDialog] to perform live conversion without duplicating
+     * the list logic.
+     */
+    fun getRateForConversion(from: Currency, to: Currency): CurrencyRate? {
+        return cachedRates
+            .filter { it.fromCurrency == from && it.toCurrency == to }
+            .maxByOrNull { it.updatedAt }
+    }
+
     // ── Internal ─────────────────────────────────────────────────────────────
 
     /**
-     * Fetches rates, sorts them by pair (from→to ascending) then updatedAt DESC,
-     * and emits the appropriate [RateListUiState].
+     * Fetches rates, pairs each one with its inverse when present, and emits
+     * the appropriate [RateListUiState].
+     *
+     * Each pair (X→Y) is rendered once in the grid; the inverse (Y→X) is
+     * nested inside the same card. To avoid double-rendering, we only emit
+     * the primary when its key sorts before the inverse key (alphabetical
+     * pair comparison).
      */
     private fun loadRates() {
         viewModelScope.launch {
             try {
                 val rates = listCurrencyRates().first()
-                val sorted = rates.sortedWith(
-                    compareBy<CurrencyRate> {
-                        "${it.fromCurrency.code}→${it.toCurrency.code}"
-                    }.thenByDescending { it.updatedAt },
-                )
-                val items = sorted.map { it.toDisplayItem() }
+                cachedRates = rates
+
+                val byPairKey = rates.groupBy { pairKey(it.fromCurrency, it.toCurrency) }
+                val items = byPairKey.values
+                    .map { group -> group.maxByOrNull { it.updatedAt }!! }
+                    .sortedWith(
+                        compareBy<CurrencyRate> { it.fromCurrency.code }
+                            .thenBy { it.toCurrency.code }
+                            .thenByDescending { it.updatedAt },
+                    )
+                    .map { primary -> buildDisplayItem(primary, rates) }
 
                 _uiState.value = if (items.isEmpty()) {
                     RateListUiState.Empty
@@ -220,27 +336,67 @@ class RateListViewModel @Inject constructor(
     }
 
     /**
-     * Maps a domain [CurrencyRate] to a pre-formatted [RateDisplayItem].
-     *
-     * - pairLabel: "CUP → USD" format using currency codes.
-     * - rateFormatted: stripped trailing zeros, max 2 decimals (e.g. "120.50").
-     * - updatedAtFormatted: "dd/MM/yyyy" from [CurrencyRate.updatedAt].
+     * Builds a [RateDisplayItem] for [primary], attaching its inverse rate
+     * from [allRates] when one exists.
      */
-    private fun CurrencyRate.toDisplayItem(): RateDisplayItem {
+    private fun buildDisplayItem(primary: CurrencyRate, allRates: List<CurrencyRate>): RateDisplayItem {
         val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
         val zone = ZoneId.systemDefault()
+        val inverse = allRates
+            .filter { it.fromCurrency == primary.toCurrency && it.toCurrency == primary.fromCurrency }
+            .maxByOrNull { it.updatedAt }
+            ?.let { inv ->
+                InverseRateDisplay(
+                    id = inv.id,
+                    fromCurrency = inv.fromCurrency,
+                    toCurrency = inv.toCurrency,
+                    rate = inv.rate,
+                    rateFormatted = formatRate(inv.rate),
+                )
+            }
         return RateDisplayItem(
-            id = id,
-            fromCurrency = fromCurrency,
-            toCurrency = toCurrency,
-            pairLabel = "${fromCurrency.code} → ${toCurrency.code}",
-            rate = rate,
-            rateFormatted = rate.setScale(2, RoundingMode.HALF_UP)
-                .stripTrailingZeros()
-                .toPlainString(),
-            provider = provider,
-            updatedAt = updatedAt,
-            updatedAtFormatted = formatter.format(updatedAt.atZone(zone)),
+            id = primary.id,
+            fromCurrency = primary.fromCurrency,
+            toCurrency = primary.toCurrency,
+            pairLabel = "${primary.fromCurrency.code} → ${primary.toCurrency.code}",
+            rate = primary.rate,
+            rateFormatted = formatRate(primary.rate),
+            provider = primary.provider,
+            updatedAt = primary.updatedAt,
+            updatedAtFormatted = formatter.format(primary.updatedAt.atZone(zone)),
+            inverse = inverse,
         )
+    }
+
+    /**
+     * Returns a stable pair key for grouping the inverse of X→Y with Y→X.
+     * Both directions produce the same key so they collapse into one card.
+     */
+    private fun pairKey(from: Currency, to: Currency): String {
+        val a = from.code
+        val b = to.code
+        return if (a <= b) "$a-$b" else "$b-$a"
+    }
+
+    /** Inverse of a rate: 1 / rate, scaled to 10 decimals with HALF_UP. */
+    private fun inverseOf(rate: BigDecimal): BigDecimal {
+        return BigDecimal.ONE.divide(rate, 10, RoundingMode.HALF_UP)
+    }
+
+    /** Strip trailing zeros, preserving precision.
+     *
+     *  - For rates >= 1: at most 2 decimals (e.g. "120.5", "270").
+     *  - For rates < 1: at most 6 significant digits (e.g. "0.0083") so the
+     *    inverse of a 3-digit rate stays meaningful.
+     */
+    private fun formatRate(rate: BigDecimal): String {
+        val absRate = rate.abs()
+        val scaled = if (absRate >= BigDecimal.ONE) {
+            rate.setScale(2, RoundingMode.HALF_UP)
+        } else {
+            // 6 significant digits total via MathContext
+            rate.round(java.math.MathContext(6, RoundingMode.HALF_UP))
+        }
+        return scaled.stripTrailingZeros().toPlainString()
     }
 }

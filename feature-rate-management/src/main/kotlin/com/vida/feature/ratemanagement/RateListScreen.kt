@@ -1,5 +1,6 @@
 package com.vida.feature.ratemanagement
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,13 +10,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Calculate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -67,8 +69,10 @@ fun RateListScreen(
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
     var showAddDialog by remember { mutableStateOf(false) }
+    var showAddDuplicateError by remember { mutableStateOf(false) }
     var editingRate by remember { mutableStateOf<RateDisplayItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf<RateDisplayItem?>(null) }
+    var showConverter by remember { mutableStateOf(false) }
 
     // Observe one-shot navigation events.
     LaunchedEffect(Unit) {
@@ -80,7 +84,12 @@ fun RateListScreen(
 
                 is RateNavEvent.SaveSuccess -> {
                     showAddDialog = false
+                    showAddDuplicateError = false
                     editingRate = null
+                }
+
+                is RateNavEvent.DuplicateRate -> {
+                    showAddDuplicateError = true
                 }
             }
         }
@@ -93,11 +102,25 @@ fun RateListScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalAlignment = Alignment.End,
+            ) {
+                FloatingActionButton(
+                    onClick = { showConverter = true },
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Calculate,
+                        contentDescription = "Convertidor",
+                    )
+                }
+                FloatingActionButton(onClick = { showAddDialog = true }) {
+                    Text(
+                        text = "+",
+                        style = MaterialTheme.typography.headlineSmall,
+                    )
+                }
             }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -187,7 +210,11 @@ fun RateListScreen(
         RateFormDialog(
             isEdit = false,
             isSaving = isSaving,
-            onDismiss = { showAddDialog = false },
+            duplicateError = showAddDuplicateError,
+            onDismiss = {
+                showAddDialog = false
+                showAddDuplicateError = false
+            },
             onSave = { from, to, rate, date, provider ->
                 viewModel.onAdd(from, to, rate, date, provider)
             },
@@ -213,10 +240,13 @@ fun RateListScreen(
 
     // ── Delete confirmation AlertDialog ──────────────────────────────────────
     showDeleteConfirm?.let { rate ->
+        val inverseLabel = rate.inverse?.let { inv ->
+            " y ${inv.fromCurrency.code} → ${inv.toCurrency.code}"
+        } ?: ""
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
             title = { Text("Eliminar tasa") },
-            text = { Text("¿Eliminar la tasa ${rate.pairLabel}?") },
+            text = { Text("¿Eliminar la tasa ${rate.pairLabel}$inverseLabel?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -231,6 +261,16 @@ fun RateListScreen(
                 TextButton(onClick = { showDeleteConfirm = null }) {
                     Text("Cancelar")
                 }
+            },
+        )
+    }
+
+    // ── Converter dialog ──────────────────────────────────────────────────────
+    if (showConverter) {
+        ConverterDialog(
+            onDismiss = { showConverter = false },
+            getRate = { from, to ->
+                viewModel.getRateForConversion(from, to)
             },
         )
     }

@@ -32,15 +32,20 @@ sealed interface RateListUiState {
 /**
  * Pre-formatted display item for a single currency rate row.
  *
- * @property id Row id.
+ * When the inverse rate (e.g. CUP → USD for a USD → CUP card) also exists,
+ * it is rendered as a sub-section of the same card. Both rows share provider
+ * and date (they're created as a pair when the primary is added).
+ *
+ * @property id Row id of the PRIMARY rate.
  * @property fromCurrency The "from" side of the pair (preserved for edit reconstruction).
  * @property toCurrency The "to" side of the pair (preserved for edit reconstruction).
- * @property pairLabel Human-readable pair label (e.g. "CUP → USD").
+ * @property pairLabel Human-readable pair label (e.g. "USD → CUP").
  * @property rate Raw [BigDecimal] rate value (for edit reconstruction).
  * @property rateFormatted Formatted rate string (e.g. "120.50").
  * @property provider The source of this rate (e.g. "Manual", "Banco Central").
  * @property updatedAt Raw [Instant] (for edit reconstruction).
  * @property updatedAtFormatted Date as "dd/MM/yyyy".
+ * @property inverse The matching inverse rate (to → from), if it exists in storage.
  */
 data class RateDisplayItem(
     val id: Long,
@@ -52,6 +57,25 @@ data class RateDisplayItem(
     val provider: String,
     val updatedAt: Instant,
     val updatedAtFormatted: String,
+    val inverse: InverseRateDisplay? = null,
+)
+
+/**
+ * Sub-section of a [RateDisplayItem] card showing the inverse rate (e.g. for
+ * a USD → CUP primary, the inverse is CUP → USD with rate = 1 / 120.50).
+ *
+ * @property id Row id of the inverse rate.
+ * @property fromCurrency Inverse "from" (same as the primary's "to").
+ * @property toCurrency Inverse "to" (same as the primary's "from").
+ * @property rate Raw [BigDecimal] of the inverse rate.
+ * @property rateFormatted Formatted inverse rate string (e.g. "0.0083").
+ */
+data class InverseRateDisplay(
+    val id: Long,
+    val fromCurrency: Currency,
+    val toCurrency: Currency,
+    val rate: BigDecimal,
+    val rateFormatted: String,
 )
 
 /**
@@ -66,4 +90,7 @@ sealed class RateNavEvent {
 
     /** Emitted after an add or edit operation completes successfully. */
     data object SaveSuccess : RateNavEvent()
+
+    /** Emitted when user tries to add a rate that already exists. */
+    data object DuplicateRate : RateNavEvent()
 }

@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -24,6 +25,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Currency
 import java.math.BigDecimal
@@ -43,8 +45,8 @@ import java.time.ZoneId
  * Save is disabled when [isSaving] is true, rate is invalid (blank,
  * not a valid BigDecimal, zero, or negative), or from == to.
  *
- * @param initialFrom Default "from" currency (CUP).
- * @param initialTo Default "to" currency (USD).
+ * @param initialFrom Default "from" currency (USD).
+ * @param initialTo Default "to" currency (CUP).
  * @param initialRate Pre-populated rate string (empty for add).
  * @param initialProvider Pre-populated provider string ("Manual" for add).
  * @param initialDate Pre-populated date (Instant.now() for add).
@@ -56,13 +58,14 @@ import java.time.ZoneId
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RateFormDialog(
-    initialFrom: Currency = Currency.CUP,
-    initialTo: Currency = Currency.USD,
+    initialFrom: Currency = Currency.USD,
+    initialTo: Currency = Currency.CUP,
     initialRate: String = "",
     initialProvider: String = "Manual",
     initialDate: Instant = Instant.now(),
     isEdit: Boolean = false,
     isSaving: Boolean = false,
+    duplicateError: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (from: Currency, to: Currency, rate: BigDecimal, date: Instant, provider: String) -> Unit,
 ) {
@@ -146,6 +149,13 @@ fun RateFormDialog(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
+                if (duplicateError) {
+                    Text(
+                        text = "Esta tasa ya existe. Ábrela y edítala.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
 
                 // Rate
                 OutlinedTextField(
@@ -155,6 +165,7 @@ fun RateFormDialog(
                     isError = rateError != null,
                     supportingText = rateError?.let { { Text(it) } },
                     singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
