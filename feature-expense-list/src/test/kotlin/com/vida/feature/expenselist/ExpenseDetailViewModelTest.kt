@@ -8,6 +8,7 @@ import com.vida.domain.model.Expense
 import com.vida.domain.model.Money
 import com.vida.domain.model.Refund
 import com.vida.domain.model.SourceType
+import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.DeleteExpense
 import com.vida.domain.usecase.expense.GetExpense
@@ -15,6 +16,8 @@ import com.vida.domain.usecase.refund.AddRefund
 import com.vida.domain.usecase.refund.DeleteRefund
 import com.vida.domain.usecase.refund.GetRefundsByOriginalExpense
 import com.vida.domain.usecase.refund.UpdateRefund
+import com.vida.domain.usecase.stash.ListStashes
+import com.vida.domain.usecase.wallet.ListWallets
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -39,6 +42,9 @@ class ExpenseDetailViewModelTest {
     private lateinit var getExpense: GetExpense
     private lateinit var deleteExpense: DeleteExpense
     private lateinit var listCategories: ListCategories
+    private lateinit var listWallets: ListWallets
+    private lateinit var listCards: ListCards
+    private lateinit var listStashes: ListStashes
     private lateinit var getRefunds: GetRefundsByOriginalExpense
     private lateinit var addRefund: AddRefund
     private lateinit var updateRefund: UpdateRefund
@@ -82,6 +88,9 @@ class ExpenseDetailViewModelTest {
         getExpense = mockk()
         deleteExpense = mockk()
         listCategories = mockk()
+        listWallets = mockk()
+        listCards = mockk()
+        listStashes = mockk()
         getRefunds = mockk()
         addRefund = mockk()
         updateRefund = mockk()
@@ -89,6 +98,9 @@ class ExpenseDetailViewModelTest {
 
         coEvery { getExpense(any()) } returns sampleExpense()
         every { listCategories() } returns flowOf(sampleCategories)
+        every { listWallets() } returns flowOf(emptyList())
+        every { listCards() } returns flowOf(emptyList())
+        every { listStashes() } returns flowOf(emptyList())
     }
 
     @After
@@ -101,6 +113,9 @@ class ExpenseDetailViewModelTest {
         getExpense = getExpense,
         deleteExpense = deleteExpense,
         listCategories = listCategories,
+        listWallets = listWallets,
+        listCards = listCards,
+        listStashes = listStashes,
         getRefunds = getRefunds,
         addRefund = addRefund,
         updateRefund = updateRefund,

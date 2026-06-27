@@ -23,6 +23,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Savings
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -47,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vida.feature.expense.ExpenseFormDialog
 import java.math.BigDecimal
 
 /**
@@ -71,6 +78,7 @@ fun ExpenseDetailScreen(
     var showRefundDialog by remember { mutableStateOf(false) }
     var editingRefund by remember { mutableStateOf<RefundDisplay?>(null) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var showEditDialog by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -78,9 +86,6 @@ fun ExpenseDetailScreen(
         viewModel.navigationEvents.collect { event ->
             when (event) {
                 DetailNavigationEvent.NavigateBack -> onNavigateBack()
-                is DetailNavigationEvent.NavigateToEdit -> {
-                    // Future: navigate to edit screen.
-                }
             }
         }
     }
@@ -97,9 +102,9 @@ fun ExpenseDetailScreen(
                 title = { Text("Detalle del gasto") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.headlineSmall,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
                         )
                     }
                 },
@@ -179,7 +184,11 @@ fun ExpenseDetailScreen(
                                 }
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                                DetailRow("Fuente", detail.sourceLabel)
+                                DetailRow(
+                                    label = "Fuente",
+                                    value = detail.sourceLabel,
+                                    leadingIcon = sourceTypeIcon(detail.sourceType),
+                                )
 
                                 if (!detail.note.isNullOrBlank()) {
                                     HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -238,7 +247,7 @@ fun ExpenseDetailScreen(
 
                         // Action buttons
                         OutlinedButton(
-                            onClick = { viewModel.onEdit() },
+                            onClick = { showEditDialog = true },
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text("Editar")
@@ -280,6 +289,18 @@ fun ExpenseDetailScreen(
     }
 
     // ── Dialogs ──────────────────────────────────────────────────────────
+    if (showEditDialog) {
+        ExpenseFormDialog(
+            // Reusing the same dialog as create — `expenseIdToEdit` switches it
+            // into EDIT mode (pre-fills fields + routes submit through
+            // UpdateExpense). `onSuccess` triggers a re-fetch here so the detail
+            // page reflects the updated values immediately.
+            expenseIdToEdit = viewModel.expenseId,
+            onDismiss = { showEditDialog = false },
+            onSuccess = { viewModel.refresh() },
+        )
+    }
+
     if (showRefundDialog) {
         RefundFormDialog(
             editingRefund = editingRefund,
@@ -311,7 +332,11 @@ fun ExpenseDetailScreen(
 }
 
 @Composable
-private fun DetailRow(label: String, value: String) {
+private fun DetailRow(
+    label: String,
+    value: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -322,6 +347,15 @@ private fun DetailRow(label: String, value: String) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(modifier = Modifier.weight(1f))
+        if (leadingIcon != null) {
+            Icon(
+                imageVector = leadingIcon,
+                contentDescription = null, // the value text describes it
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+        }
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
@@ -475,6 +509,20 @@ private fun RefundFormDialog(
         },
     )
 }
+
+/**
+ * Maps a [com.vida.domain.model.SourceType] to the icon shown next to the
+ * "Fuente" row in the detail screen. Centralized so the visual mapping is the
+ * single source of truth — adding a new SourceType only requires updating the
+ * when branch here, matching the same pattern in
+ * `PerSourceBreakdownSection.iconFor()` in feature-home.
+ */
+private fun sourceTypeIcon(sourceType: com.vida.domain.model.SourceType): androidx.compose.ui.graphics.vector.ImageVector =
+    when (sourceType) {
+        com.vida.domain.model.SourceType.WALLET -> Icons.Default.AccountBalanceWallet
+        com.vida.domain.model.SourceType.CARD -> Icons.Default.CreditCard
+        com.vida.domain.model.SourceType.STASH -> Icons.Default.Savings
+    }
 
 /** AlertDialog for confirming refund deletion. */
 @Composable

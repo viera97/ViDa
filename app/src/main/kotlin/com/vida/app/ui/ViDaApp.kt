@@ -1,8 +1,30 @@
 package com.vida.app.ui
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
+import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.vida.feature.cardmanagement.CardListScreen
 import com.vida.feature.categorymanagement.CategoryListScreen
@@ -13,6 +35,8 @@ import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
 import com.vida.feature.home.HomeScreen
+import com.vida.feature.incomelist.IncomeDetailScreen
+import com.vida.feature.incomelist.IncomeListScreen
 import com.vida.feature.transfermanagement.TransferFormScreen
 import com.vida.feature.walletmanagement.WalletScreen
 
@@ -29,6 +53,10 @@ import com.vida.feature.walletmanagement.WalletScreen
  * - "rates" → [RateListScreen] (currency rate management)
  * - "recurring" → [RecurringListScreen] (recurring expense management)
  * - "wallet" → [WalletScreen] (wallet view/edit)
+ * - "fuentes" → [FuentesScreen] (unified wallet + cards view)
+ *
+ * The global [NavigationBar] is rendered at root level via [Scaffold], making it
+ * persistent across all screens. Each screen uses its own Scaffold for top bars.
  *
  * Navigation Compose is a new dependency introduced for this feature.
  * Hardware/system back returns to the previous screen.
@@ -36,90 +64,259 @@ import com.vida.feature.walletmanagement.WalletScreen
 @Composable
 fun ViDaApp() {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = "home") {
-        composable("home") {
-            HomeScreen(
-                onNavigateToExpenseForm = {
-                    navController.navigate("expense/new")
-                },
-                onNavigateToExpenseList = {
-                    navController.navigate("expenses")
-                },
-                onNavigateToCategoryManagement = {
-                    navController.navigate("categories")
-                },
-                onNavigateToCardManagement = {
-                    navController.navigate("cards")
-                },
-                onNavigateToStashManagement = {
-                    navController.navigate("stashes")
-                },
-                onNavigateToWalletManagement = {
-                    navController.navigate("wallet")
-                },
-                onNavigateToRateManagement = {
-                    navController.navigate("rates")
-                },
-                onNavigateToTransferManagement = {
-                    navController.navigate("transfer/new")
-                },
-                onNavigateToRecurringManagement = {
-                    navController.navigate("recurring")
-                },
-            )
-        }
-        composable("recurring") {
-            RecurringListScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("expense/new") {
-            ExpenseFormScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("transfer/new") {
-            TransferFormScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("expenses") {
-            ExpenseListScreen(
-                onNavigateToDetail = { id -> navController.navigate("expense/$id") },
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("expense/{id}") {
-            ExpenseDetailScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("categories") {
-            CategoryListScreen(
-                onNavigateBack = { navController.popBackStack() },
-                onNavigateToAdd = { /* PR #2: navigate to add category */ },
-                onNavigateToEdit = { /* PR #2: navigate to edit category */ },
-            )
-        }
-        composable("cards") {
-            CardListScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("stashes") {
-            StashListScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("rates") {
-            RateListScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
-        }
-        composable("wallet") {
-            WalletScreen(
-                onNavigateBack = { navController.popBackStack() },
-            )
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentRoute = navBackStackEntry?.destination?.route
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.Home,
+                            contentDescription = "Inicio",
+                        )
+                    },
+                    selected = currentRoute == "home",
+                    onClick = {
+                        navController.navigate("home") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.AccountBalance,
+                            contentDescription = "Fuentes",
+                        )
+                    },
+                    selected = currentRoute == "fuentes",
+                    onClick = {
+                        navController.navigate("fuentes") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.CurrencyExchange,
+                            contentDescription = "Tasas",
+                        )
+                    },
+                    selected = currentRoute == "rates",
+                    onClick = {
+                        navController.navigate("rates") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.Repeat,
+                            contentDescription = "Recurrentes",
+                        )
+                    },
+                    selected = currentRoute == "recurring",
+                    onClick = {
+                        navController.navigate("recurring") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+                NavigationBarItem(
+                    icon = {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Categorías",
+                        )
+                    },
+                    selected = currentRoute == "categories",
+                    onClick = {
+                        navController.navigate("categories") {
+                            popUpTo("home") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
+                )
+            }
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = "home",
+            modifier = Modifier
+                .background(MaterialTheme.colorScheme.background)
+                .padding(innerPadding),
+        ) {
+            composable(
+                "home",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                HomeScreen(
+                    onNavigateToExpenseList = { navController.navigate("expenses") },
+                    onNavigateToIncomeList = { navController.navigate("incomes") },
+                    onNavigateToFuentes = { navController.navigate("fuentes") },
+                )
+            }
+            composable(
+                "recurring",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                RecurringListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "expense/new",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                ExpenseFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "transfer/new",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                TransferFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "expenses",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                ExpenseListScreen(
+                    onNavigateToDetail = { id -> navController.navigate("expense/$id") },
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "expense/{id}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                ExpenseDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "incomes",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                IncomeListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToDetail = { id -> navController.navigate("income/$id") },
+                )
+            }
+            composable(
+                "income/{id}",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                IncomeDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "categories",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                CategoryListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToAdd = { /* PR #2: navigate to add category */ },
+                    onNavigateToEdit = { /* PR #2: navigate to edit category */ },
+                )
+            }
+            composable(
+                "cards",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                CardListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "stashes",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                StashListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "rates",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                RateListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "wallet",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                WalletScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
+            composable(
+                "fuentes",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                FuentesScreen(
+                    onNavigateToTransfer = { navController.navigate("transfer/new") },
+                    onNavigateToWallet = { navController.navigate("wallet") },
+                    onNavigateToCards = { navController.navigate("cards") },
+                )
+            }
         }
     }
 }

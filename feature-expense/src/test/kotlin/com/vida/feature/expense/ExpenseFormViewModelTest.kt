@@ -14,8 +14,10 @@ import com.vida.domain.model.Wallet
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.AddExpense
+import com.vida.domain.usecase.expense.GetExpense
+import com.vida.domain.usecase.expense.UpdateExpense
 import com.vida.domain.usecase.stash.ListStashes
-import com.vida.domain.usecase.wallet.GetWallet
+import com.vida.domain.usecase.wallet.ListWallets
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -42,10 +44,12 @@ import java.time.temporal.ChronoUnit
 class ExpenseFormViewModelTest {
 
     private lateinit var addExpense: AddExpense
+    private lateinit var updateExpense: UpdateExpense
+    private lateinit var getExpense: GetExpense
     private lateinit var listCategories: ListCategories
     private lateinit var listCards: ListCards
     private lateinit var listStashes: ListStashes
-    private lateinit var getWallet: GetWallet
+    private lateinit var listWallets: ListWallets
 
     private val testCardNumber: CardNumber =
         CardNumber.fromFirst6Last4("123456", "3456")
@@ -76,20 +80,22 @@ class ExpenseFormViewModelTest {
         ),
     )
 
-    private val defaultWallet = Wallet(currency = Currency.CUP)
+    private val defaultWallet = Wallet(id = 1L, currency = Currency.CUP)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setup() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
         addExpense = mockk()
+        updateExpense = mockk()
+        getExpense = mockk()
         listCategories = mockk()
         listCards = mockk()
         listStashes = mockk()
-        getWallet = mockk()
+        listWallets = mockk()
 
-        // Default mocks: wallet + categories + empty cards/stashes
-        coEvery { getWallet() } returns defaultWallet
+        // Default mocks: one wallet, categories, empty cards/stashes
+        every { listWallets() } returns flowOf(listOf(defaultWallet))
         every { listCategories() } returns flowOf(sampleCategories)
         every { listCards() } returns flowOf(emptyList())
         every { listStashes() } returns flowOf(emptyList())
@@ -105,10 +111,12 @@ class ExpenseFormViewModelTest {
 
     private fun createVm(): ExpenseFormViewModel = ExpenseFormViewModel(
         addExpense = addExpense,
+        updateExpense = updateExpense,
+        getExpense = getExpense,
         listCategories = listCategories,
         listCards = listCards,
         listStashes = listStashes,
-        getWallet = getWallet,
+        listWallets = listWallets,
     )
 
     // ── SCN-EXP-004 / 005 / 006: Initial load ───────────────────────────────
@@ -124,7 +132,7 @@ class ExpenseFormViewModelTest {
                 assertEquals(1, ready.sources.size)
                 assertEquals("Billetera", ready.sources[0].label)
                 assertEquals(Currency.CUP, ready.sources[0].currency)
-                assertNull(ready.sources[0].id)
+                assertEquals(1L, ready.sources[0].id)
                 assertEquals(SourceType.WALLET, ready.sources[0].type)
             }
         }
@@ -139,7 +147,8 @@ class ExpenseFormViewModelTest {
             val ready = awaitItem() as ExpenseFormUiState.Ready
             assertEquals(Currency.CUP, ready.form.currency)
             assertEquals(SourceType.WALLET, ready.form.sourceType)
-            assertNull(ready.form.sourceId)
+            assertEquals(1L, ready.form.sourceId)
+            assertTrue(ready.form.hasSourceSelected)
         }
     }
 
@@ -158,7 +167,7 @@ class ExpenseFormViewModelTest {
 
             // Wallet is first
             assertEquals(SourceType.WALLET, ready.sources[0].type)
-            assertNull(ready.sources[0].id)
+            assertEquals(1L, ready.sources[0].id)
             assertEquals("Billetera", ready.sources[0].label)
 
             // Card is second
@@ -177,8 +186,8 @@ class ExpenseFormViewModelTest {
     // ── SCN-EXP-007: Error state on load failure ────────────────────────────
 
     @Test
-    fun `emits Error when getWallet throws`() = runTest {
-        coEvery { getWallet() } throws RuntimeException("No wallet seeded")
+    fun `emits Error when listWallets throws`() = runTest {
+        every { listWallets() } throws RuntimeException("DB error")
 
         val vm = createVm()
 
@@ -478,7 +487,7 @@ class ExpenseFormViewModelTest {
                             )
                             assertEquals("Almuerzo", expense.description)
                             assertEquals(SourceType.WALLET, expense.sourceType)
-                            assertNull(expense.sourceId)
+                            assertEquals(1L, expense.sourceId)
                         },
                     )
                 }

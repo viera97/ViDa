@@ -2,6 +2,7 @@ package com.vida.feature.cardmanagement
 
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Money
 import java.time.LocalDate
 
 /**
@@ -42,6 +43,9 @@ sealed interface CardListUiState {
  * @property expiryFormatted Expiry date as "MM/YY".
  * @property expiry Raw expiry [LocalDate] (for edit pre-population).
  * @property note Optional card note.
+ * @property balanceFormatted Formatted balance (e.g. "$ 1,250.50") or "—" on error.
+ * @property balance Raw stored [Money] balance. Used by edit dialogs to
+ *   pre-populate the input field without parsing the locale-aware formatted string.
  */
 data class CardDisplayItem(
     val id: Long,
@@ -54,6 +58,8 @@ data class CardDisplayItem(
     val expiryFormatted: String,
     val expiry: LocalDate,
     val note: String?,
+    val balanceFormatted: String = "—",
+    val balance: Money = Money.ZERO_CUP,
 )
 
 /**

@@ -13,6 +13,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  * Layout (top to bottom):
  * - TopAppBar ("Tarjetas") with back button
  * - Content area: [LazyColumn] when [CardListUiState.Ready],
- *   centered message + "Agregar tarjeta" button for [CardListUiState.Empty],
+ *   centered message for [CardListUiState.Empty],
  *   error message + retry for [CardListUiState.Error],
  *   spinner for [CardListUiState.Loading]
  * - FAB ("+") → opens [CardFormDialog] in add mode
@@ -88,9 +91,9 @@ fun CardListScreen(
                 title = { Text("Tarjetas") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.headlineSmall,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
                         )
                     }
                 },
@@ -130,7 +133,6 @@ fun CardListScreen(
                             CardListItem(
                                 card = card,
                                 onClick = { editingCard = card },
-                                onEdit = { editingCard = card },
                                 onDelete = { showDeleteConfirm = card },
                             )
                         }
@@ -144,7 +146,7 @@ fun CardListScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No hay tarjetas",
+                                text = "No hay tarjetas registradas",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -156,10 +158,6 @@ fun CardListScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { showAddDialog = true }) {
-                                Text("Agregar tarjeta")
-                            }
                         }
                     }
                 }
@@ -193,14 +191,17 @@ fun CardListScreen(
             isEdit = false,
             isSaving = isSaving,
             onDismiss = { showAddDialog = false },
-            onSave = { bank, first6, last4, type, currency, expiry, note ->
-                viewModel.onAdd(bank, first6, last4, type, currency, expiry, note)
+            onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
+                viewModel.onAdd(bank, first6, last4, type, currency, expiry, note, balanceMinor)
             },
         )
     }
 
     // ── Edit dialog ───────────────────────────────────────────────────────────
     editingCard?.let { card ->
+        val balanceInput = card.balance.amount
+            .setScale(2, java.math.RoundingMode.HALF_EVEN)
+            .toPlainString()
         CardFormDialog(
             initialBank = card.bank,
             initialFirst6 = card.first6,
@@ -209,12 +210,13 @@ fun CardListScreen(
             initialCurrency = card.currency,
             initialExpiry = card.expiry,
             initialNote = card.note ?: "",
+            balanceStr = balanceInput,
             isEdit = true,
             isSaving = isSaving,
             onDismiss = { editingCard = null },
-            onSave = { bank, first6, last4, type, currency, expiry, note ->
+            onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
                 viewModel.onEdit(
-                    card.id, bank, first6, last4, type, currency, expiry, note,
+                    card.id, bank, first6, last4, type, currency, expiry, note, balanceMinor,
                 )
             },
         )

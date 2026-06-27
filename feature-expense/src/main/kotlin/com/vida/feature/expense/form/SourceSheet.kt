@@ -48,12 +48,15 @@ fun SourceSheet(
     ) {
         LazyColumn {
             // --- Wallet section ---
-            val wallet = sources.firstOrNull { it.type == SourceType.WALLET }
-            if (wallet != null) {
-                item(key = "wallet-header") {
-                    SectionHeader("Billetera")
+            val wallets = sources.filter { it.type == SourceType.WALLET }
+            if (wallets.isNotEmpty()) {
+                item(key = "wallets-header") {
+                    SectionHeader("Billeteras")
                 }
-                item(key = "wallet-${wallet.id}") {
+                items(
+                    items = wallets,
+                    key = { "wallet-${it.id}" },
+                ) { wallet ->
                     SourceRow(
                         source = wallet,
                         isSelected = wallet == selectedSource,
@@ -149,7 +152,7 @@ private fun SourceRow(
         },
         trailingContent = {
             Badge {
-                Text(source.currency.symbol)
+                Text(source.currency.code)
             }
         },
         modifier = Modifier.clickable(onClick = onClick),

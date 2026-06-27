@@ -3,6 +3,10 @@ package com.vida.feature.expenselist
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.runtime.DisposableEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +24,10 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
@@ -90,15 +98,36 @@ fun ExpenseListScreen(
         }
     }
 
+    // Refresh the list whenever the screen returns to the foreground.
+    //
+    // The expense list query is one-shot (manual offset pagination over a
+    // @RawQuery), so it doesn't react to table changes via Room's Flow. When
+    // the user deletes an expense on the detail screen and navigates back,
+    // we need to re-query — otherwise the deleted row is still visible. A
+    // lifecycle observer is the standard Android pattern: ON_RESUME fires on
+    // initial show, on return-from-detail, and on app resume from background.
+    // The query is cheap (in-memory after the first load) and pull-to-refresh
+    // is available as a manual fallback.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.onRefresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Gastos") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.headlineSmall,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
                         )
                     }
                 },
@@ -300,9 +329,9 @@ private fun SearchBar(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         placeholder = { Text("Buscar gastos...") },
         leadingIcon = {
-            Text(
-                text = "🔍",
-                style = MaterialTheme.typography.bodyLarge,
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = "Buscar",
             )
         },
         singleLine = true,

@@ -101,5 +101,6 @@ class CurrencyRateRepositoryImplTest {
         toCurrency = Currency.CUP,
         rate = BigDecimal("24.50"),
         updatedAt = Instant.ofEpochMilli(1_000L),
+        provider = "Manual",
     )
 }

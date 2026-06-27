@@ -38,6 +38,7 @@ sealed interface RateListUiState {
  * @property pairLabel Human-readable pair label (e.g. "CUP → USD").
  * @property rate Raw [BigDecimal] rate value (for edit reconstruction).
  * @property rateFormatted Formatted rate string (e.g. "120.50").
+ * @property provider The source of this rate (e.g. "Manual", "Banco Central").
  * @property updatedAt Raw [Instant] (for edit reconstruction).
  * @property updatedAtFormatted Date as "dd/MM/yyyy".
  */
@@ -48,6 +49,7 @@ data class RateDisplayItem(
     val pairLabel: String,
     val rate: BigDecimal,
     val rateFormatted: String,
+    val provider: String,
     val updatedAt: Instant,
     val updatedAtFormatted: String,
 )

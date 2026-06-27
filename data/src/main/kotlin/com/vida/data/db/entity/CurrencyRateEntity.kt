@@ -26,4 +26,5 @@ data class CurrencyRateEntity(
     @ColumnInfo(name = "to_currency") val toCurrency: Currency,
     val rate: Double,
     @ColumnInfo(name = "effective_date") val effectiveDate: Long,
+    @ColumnInfo(name = "provider", defaultValue = "Manual") val provider: String = "Manual",
 )

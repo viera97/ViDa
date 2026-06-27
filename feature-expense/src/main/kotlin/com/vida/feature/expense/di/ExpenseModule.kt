@@ -5,6 +5,8 @@ import com.vida.domain.repository.ExpenseRepository
 import com.vida.domain.repository.WalletRepository
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.AddExpense
+import com.vida.domain.usecase.expense.GetExpense
+import com.vida.domain.usecase.expense.UpdateExpense
 import com.vida.domain.usecase.wallet.GetWallet
 import dagger.Module
 import dagger.Provides
@@ -26,6 +28,14 @@ object ExpenseModule {
     @Provides
     fun provideAddExpense(repo: ExpenseRepository): AddExpense =
         AddExpense(repo)
+
+    @Provides
+    fun provideUpdateExpense(repo: ExpenseRepository): UpdateExpense =
+        UpdateExpense(repo)
+
+    @Provides
+    fun provideGetExpense(repo: ExpenseRepository): GetExpense =
+        GetExpense(repo)
 
     @Provides
     fun provideListCategories(repo: CategoryRepository): ListCategories =

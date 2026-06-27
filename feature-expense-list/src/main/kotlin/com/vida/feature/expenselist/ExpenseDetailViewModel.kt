@@ -7,6 +7,7 @@ import com.vida.core.format.formatMoney
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.model.Refund
+import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.DeleteExpense
 import com.vida.domain.usecase.expense.GetExpense
@@ -14,6 +15,8 @@ import com.vida.domain.usecase.refund.AddRefund
 import com.vida.domain.usecase.refund.DeleteRefund
 import com.vida.domain.usecase.refund.GetRefundsByOriginalExpense
 import com.vida.domain.usecase.refund.UpdateRefund
+import com.vida.domain.usecase.stash.ListStashes
+import com.vida.domain.usecase.wallet.ListWallets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -43,6 +46,7 @@ data class ExpenseDetailDisplay(
     val categoryColor: Int,
     val formattedDate: String,
     val sourceLabel: String,
+    val sourceType: com.vida.domain.model.SourceType,
     val note: String?,
 )
 
@@ -50,8 +54,6 @@ data class ExpenseDetailDisplay(
 sealed interface DetailNavigationEvent {
     /** Emitted after successful deletion — navigate back. */
     data object NavigateBack : DetailNavigationEvent
-    /** Placeholder for future edit navigation. */
-    data class NavigateToEdit(val expenseId: Long) : DetailNavigationEvent
 }
 
 /** One-shot snackbar event for refund-operation errors. */
@@ -81,13 +83,18 @@ class ExpenseDetailViewModel @Inject constructor(
     private val getExpense: GetExpense,
     private val deleteExpense: DeleteExpense,
     private val listCategories: ListCategories,
+    private val listWallets: ListWallets,
+    private val listCards: ListCards,
+    private val listStashes: ListStashes,
     private val getRefunds: GetRefundsByOriginalExpense,
     private val addRefund: AddRefund,
     private val updateRefund: UpdateRefund,
     private val deleteRefund: DeleteRefund,
 ) : ViewModel() {
 
-    private val expenseId: Long = savedStateHandle.get<String>("id")?.toLongOrNull() ?: 0L
+    /** The expense row id from the nav route arg — exposed so the screen can
+     *  pass it to the edit modal via [com.vida.feature.expense.ExpenseFormDialog]. */
+    val expenseId: Long = savedStateHandle.get<String>("id")?.toLongOrNull() ?: 0L
 
     private var expenseCurrency: Currency = Currency.CUP
 
@@ -108,56 +115,83 @@ class ExpenseDetailViewModel @Inject constructor(
             _uiState.value = ExpenseDetailUiState.Error("ID de gasto inválido")
             _refundState.value = RefundUiState.Error("ID de gasto inválido")
         } else {
-            viewModelScope.launch {
-                _uiState.value = ExpenseDetailUiState.Loading
-                try {
-                    val expense = getExpense(expenseId)
-                    if (expense == null) {
-                        _uiState.value = ExpenseDetailUiState.Error("Gasto no encontrado")
-                        _refundState.value = RefundUiState.Error("Gasto no encontrado")
-                        return@launch
-                    }
+            viewModelScope.launch { loadExpenseData() }
+        }
+    }
 
-                    expenseCurrency = expense.amount.currency
+    /**
+     * Re-runs the expense + refund load.
+     *
+     * Called by the screen after a successful edit (the dialog emits `Success`
+     * and closes) so the detail page reflects the updated values without
+     * requiring a full navigation away-and-back. Mirrors the on-resume refresh
+     * pattern used in the list screen.
+     */
+    fun refresh() {
+        if (expenseId <= 0L) return
+        viewModelScope.launch { loadExpenseData() }
+    }
 
-                    val categories = listCategories().first()
-                    val cat = categories.find { it.id == expense.categoryId }
-                    val sourceLabel = when {
-                        expense.sourceType.name == "WALLET" -> "Billetera"
-                        expense.sourceType.name == "CARD" -> "Tarjeta #${expense.sourceId}"
-                        expense.sourceType.name == "STASH" -> "Reserva #${expense.sourceId}"
-                        else -> expense.sourceType.name
-                    }
-
-                    val formatter = java.time.format.DateTimeFormatter
-                        .ofPattern("dd MMM yyyy, HH:mm", java.util.Locale("es", "ES"))
-                    val formattedDate = expense.dateTime
-                        .atZone(java.time.ZoneId.systemDefault())
-                        .toLocalDateTime()
-                        .format(formatter)
-
-                    _uiState.value = ExpenseDetailUiState.Ready(
-                        ExpenseDetailDisplay(
-                            id = expense.id,
-                            formattedAmount = formatMoney(expense.amount),
-                            description = expense.description,
-                            categoryName = cat?.name ?: "Sin categoría",
-                            categoryColor = cat?.color ?: 0xFF9E9E9E.toInt(),
-                            formattedDate = formattedDate,
-                            sourceLabel = sourceLabel,
-                            note = expense.note,
-                        )
-                    )
-
-                    loadRefund()
-                } catch (t: Throwable) {
-                    if (t is CancellationException) throw t
-                    _uiState.value = ExpenseDetailUiState.Error(
-                        t.message ?: "No se pudo cargar el gasto",
-                    )
-                    _refundState.value = RefundUiState.Error("No se pudo cargar el reembolso")
-                }
+    private suspend fun loadExpenseData() {
+        _uiState.value = ExpenseDetailUiState.Loading
+        try {
+            val expense = getExpense(expenseId)
+            if (expense == null) {
+                _uiState.value = ExpenseDetailUiState.Error("Gasto no encontrado")
+                _refundState.value = RefundUiState.Error("Gasto no encontrado")
+                return
             }
+
+            expenseCurrency = expense.amount.currency
+
+            val categories = listCategories().first()
+            val cat = categories.find { it.id == expense.categoryId }
+
+            // Load source entities so we can show their NAMES (e.g.
+            // "Efectivo", "Mi BPA", "Ahorro vacaciones") instead of the
+            // hardcoded "Billetera" / "Tarjeta #N" / "Reserva #N" labels.
+            val wallets = listWallets().first()
+            val cards = listCards().first()
+            val stashes = listStashes().first()
+            val sourceLabel = when (expense.sourceType) {
+                com.vida.domain.model.SourceType.WALLET ->
+                    wallets.find { it.id == expense.sourceId }?.name ?: "Billetera"
+                com.vida.domain.model.SourceType.CARD ->
+                    cards.find { it.id == expense.sourceId }
+                        ?.let { it.note?.takeIf { n -> n.isNotBlank() } ?: it.bank }
+                        ?: "Tarjeta"
+                com.vida.domain.model.SourceType.STASH ->
+                    stashes.find { it.id == expense.sourceId }?.name ?: "Reserva"
+            }
+
+            val formatter = java.time.format.DateTimeFormatter
+                .ofPattern("dd MMM yyyy, HH:mm", java.util.Locale("es", "ES"))
+            val formattedDate = expense.dateTime
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDateTime()
+                .format(formatter)
+
+            _uiState.value = ExpenseDetailUiState.Ready(
+                ExpenseDetailDisplay(
+                    id = expense.id,
+                    formattedAmount = formatMoney(expense.amount),
+                    description = expense.description,
+                    categoryName = cat?.name ?: "Sin categoría",
+                    categoryColor = cat?.color ?: 0xFF9E9E9E.toInt(),
+                    formattedDate = formattedDate,
+                    sourceLabel = sourceLabel,
+                    sourceType = expense.sourceType,
+                    note = expense.note,
+                )
+            )
+
+            loadRefund()
+        } catch (t: Throwable) {
+            if (t is CancellationException) throw t
+            _uiState.value = ExpenseDetailUiState.Error(
+                t.message ?: "No se pudo cargar el gasto",
+            )
+            _refundState.value = RefundUiState.Error("No se pudo cargar el reembolso")
         }
     }
 
@@ -268,12 +302,6 @@ class ExpenseDetailViewModel @Inject constructor(
                     t.message ?: "No se pudo eliminar el gasto",
                 )
             }
-        }
-    }
-
-    fun onEdit() {
-        viewModelScope.launch {
-            _navigationEvents.send(DetailNavigationEvent.NavigateToEdit(expenseId))
         }
     }
 }

@@ -72,7 +72,7 @@ private val CardType.badgeColor: Color
 fun CardListItem(
     card: CardDisplayItem,
     onClick: () -> Unit,
-    onEdit: () -> Unit,
+    onEdit: () -> Unit = {},
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {

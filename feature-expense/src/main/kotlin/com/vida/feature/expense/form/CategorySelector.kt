@@ -1,6 +1,7 @@
 package com.vida.feature.expense.form
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -10,7 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -21,10 +23,15 @@ import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Category
 
 /**
- * Trigger card for the category picker bottom sheet.
+ * Trigger field for the category picker bottom sheet.
  *
- * Shows a colored dot + category name when a category is selected, or a
- * placeholder label otherwise. Tapping the card invokes [onShowSheet].
+ * Renders as a disabled [OutlinedTextField] (transparent background, matching
+ * the rest of the expense form fields like [AmountSection] and
+ * [DescriptionInput]) wrapped in a clickable [Box]. Tapping the field invokes
+ * [onShowSheet].
+ *
+ * - When [selectedCategory] is non-null, displays a colored dot + category name.
+ * - Otherwise displays a "Categoría" placeholder.
  *
  * @param selectedCategory The currently selected category, or null.
  * @param onShowSheet Callback to open the category bottom sheet.
@@ -37,41 +44,41 @@ fun CategorySelector(
     error: String?,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(
-        onClick = onShowSheet,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp),
-        ) {
-            if (selectedCategory != null) {
-                Box(
-                    modifier = Modifier
-                        .size(12.dp)
-                        .clip(CircleShape)
-                        .background(Color(selectedCategory.color)),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = selectedCategory.name,
-                    style = MaterialTheme.typography.bodyLarge,
-                )
-            } else {
-                Text(
-                    text = "Categoría",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (error != null) {
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
-            )
-        }
+    Box(modifier = modifier.fillMaxWidth().clickable(onClick = onShowSheet)) {
+        OutlinedTextField(
+            value = selectedCategory?.name ?: "",
+            onValueChange = {},
+            label = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (selectedCategory != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(Color(selectedCategory.color)),
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(selectedCategory.name)
+                    } else {
+                        Text("Categoría")
+                    }
+                }
+            },
+            isError = error != null,
+            supportingText = error?.let { msg -> { Text(msg) } },
+            readOnly = true,
+            enabled = false,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledSupportingTextColor = MaterialTheme.colorScheme.error,
+            ),
+        )
     }
 }

@@ -62,7 +62,7 @@ class GetTotalBalanceTest {
         coEvery { cardRepo.getAll() } returns flowOf(emptyList<Card>())
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
         coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.USD)))
-        coEvery { walletRepo.getBalance(1L, now) } returns Money(BigDecimal.ONE, Currency.USD)
+        coEvery { walletRepo.observeBalance(1L) } returns flowOf(Money(BigDecimal.ONE, Currency.USD))
         coEvery { rateRepo.getRate(Currency.USD, Currency.CUP, now) } returns
             CurrencyRate(
                 fromCurrency = Currency.USD,
@@ -94,8 +94,8 @@ class GetTotalBalanceTest {
         coEvery { cardRepo.getAll() } returns flowOf(listOf(mlcCard))
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
         coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.CUP)))
-        coEvery { walletRepo.getBalance(1L, now) } returns Money(BigDecimal("100.00"), Currency.CUP)
-        coEvery { cardRepo.getBalance(7L, now) } returns Money(BigDecimal("50"), Currency.MLC)
+        coEvery { walletRepo.observeBalance(1L) } returns flowOf(Money(BigDecimal("100.00"), Currency.CUP))
+        coEvery { cardRepo.observeBalance(7L) } returns flowOf(Money(BigDecimal("50"), Currency.MLC))
         coEvery { rateRepo.getRate(Currency.MLC, Currency.CUP, now) } returns null
 
         val total = newTotal(cardRepo, stashRepo, walletRepo, rateRepo).invoke()

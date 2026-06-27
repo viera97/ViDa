@@ -1,5 +1,6 @@
 package com.vida.data.db.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.vida.domain.model.CardType
@@ -15,4 +16,6 @@ data class CardEntity(
     val currency: Currency,
     val note: String?,
     val expirationDate: LocalDate,
+    @ColumnInfo(name = "balance_minor") val balanceMinor: Long = 0,
+    @ColumnInfo(name = "initial_balance_currency") val initialBalanceCurrency: String = "CUP",
 )

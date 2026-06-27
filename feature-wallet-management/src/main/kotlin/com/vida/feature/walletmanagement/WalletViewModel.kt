@@ -3,80 +3,78 @@ package com.vida.feature.walletmanagement
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Currency
-import com.vida.domain.model.Expense
 import com.vida.domain.model.Money
-import com.vida.domain.model.SourceType
 import com.vida.domain.model.Wallet
-import com.vida.domain.usecase.expense.GetExpensesBySource
+import com.vida.domain.usecase.wallet.DeleteWallet
 import com.vida.domain.usecase.wallet.GetWallet
 import com.vida.domain.usecase.wallet.GetWalletBalance
+import com.vida.domain.usecase.wallet.ListWallets
 import com.vida.domain.usecase.wallet.UpdateWallet
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import javax.inject.Inject
 
 /**
- * ViewModel for the wallet management screen.
+ * ViewModel for the wallet list screen.
  *
- * The wallet is a singleton (id=1L). This screen shows the wallet info card
- * plus the last 5 wallet-sourced expenses. Edit is via an [AlertDialog] overlay.
+ * On init, loads all wallets via [ListWallets], computes balance for each via
+ * [GetWalletBalance], and emits [WalletListUiState].
  *
  * State transitions:
  * ```
- * Loading → Ready(wallet, expenses)  // wallet exists
- * Loading → WalletNotFound            // NoSuchElementException (first visit)
- * Loading → Error(message)            // any other exception
- * Ready   → Ready(wallet, expenses)   // after successful edit + refetch
+ * Loading → Ready(wallets)  // wallets exist
+ * Loading → Empty            // no wallets
+ * Loading → Error(message)   // any exception
+ * Ready   → Ready(wallets)   // after successful mutation + refetch
  * ```
  */
 @HiltViewModel
 class WalletViewModel @Inject constructor(
-    private val getWallet: GetWallet,
+    private val listWallets: ListWallets,
+    private val deleteWallet: DeleteWallet,
     private val updateWallet: UpdateWallet,
-    private val getExpensesBySource: GetExpensesBySource,
+    private val getWallet: GetWallet,
     private val getWalletBalance: GetWalletBalance,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<WalletUiState>(WalletUiState.Loading)
-    val uiState: StateFlow<WalletUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<WalletListUiState>(WalletListUiState.Loading)
+    val uiState: StateFlow<WalletListUiState> = _uiState.asStateFlow()
 
     private val _navEvents = Channel<WalletNavEvent>(Channel.BUFFERED)
     val navEvents = _navEvents.receiveAsFlow()
 
-    /** True while an edit operation is in-flight (prevents double-tap). */
+    /** True while an add/edit operation is in-flight (prevents double-tap). */
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
     init {
-        loadWallet()
+        loadWallets()
     }
 
     // ── Public actions ───────────────────────────────────────────────────────
 
     /**
-     * Updates the wallet name and/or currency.
+     * Adds a new wallet with [name], [currency], and optional [balanceMinor].
      *
-     * Validation:
-     * - Blocked when [isSaving] is true (double-tap guard).
-     * - Name trimmed length must be 1–100 (non-blank rejected).
-     *
-     * On success the wallet + expenses are refetched and [WalletNavEvent.SaveSuccess]
-     * is emitted (which closes the dialog). On error a toast is shown and the
-     * current state is preserved.
+     * Creates a [Wallet] with id=0 (upsert generates the real id) and calls
+     * [updateWallet]. On success the list is refetched and [WalletNavEvent.SaveSuccess]
+     * is emitted.
      */
-    fun onEdit(name: String, currency: Currency) {
+    fun onAdd(name: String, currency: Currency, balanceMinor: Long = 0L) {
         if (_isSaving.value) return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
@@ -85,8 +83,46 @@ class WalletViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                updateWallet(Wallet(id = 1L, name = trimmed, currency = currency))
-                loadWallet()
+                updateWallet(Wallet(id = 0L, name = trimmed, currency = currency,
+                    balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency)))
+                loadWallets()
+                _navEvents.send(WalletNavEvent.SaveSuccess)
+                _navEvents.send(WalletNavEvent.ShowToast("Billetera agregada"))
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _navEvents.send(
+                    WalletNavEvent.ShowToast(
+                        t.message ?: "No se pudo agregar la billetera",
+                    ),
+                )
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    /**
+     * Updates an existing wallet identified by [id] with new [name], [currency],
+     * and optional [balanceMinor].
+     *
+     * On success the list is refetched and [WalletNavEvent.SaveSuccess] is emitted.
+     */
+    fun onEdit(id: Long, name: String, currency: Currency, balanceMinor: Long = 0L) {
+        if (_isSaving.value) return
+        val trimmed = name.trim()
+        if (trimmed.isEmpty()) return
+        if (trimmed.length > 100) return
+
+        viewModelScope.launch {
+            _isSaving.value = true
+            try {
+                val existing = getWallet(id) ?: run {
+                    _navEvents.send(WalletNavEvent.ShowToast("Billetera no encontrada"))
+                    return@launch
+                }
+                updateWallet(existing.copy(name = trimmed, currency = currency,
+                    balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency)))
+                loadWallets()
                 _navEvents.send(WalletNavEvent.SaveSuccess)
                 _navEvents.send(WalletNavEvent.ShowToast("Billetera actualizada"))
             } catch (t: Throwable) {
@@ -103,106 +139,129 @@ class WalletViewModel @Inject constructor(
     }
 
     /**
-     * Called from the [WalletUiState.WalletNotFound] state when the user taps
-     * "Configurar billetera". The UI composable opens the edit dialog with
-     * defaults (name = "Billetera", currency = CUP); the dialog save triggers
-     * [onEdit] which upserts via [UpdateWallet].
+     * Deletes the wallet with [id].
+     *
+     * On success, the list is refetched and a success toast is emitted.
      */
-    fun onConfigureWallet() {
-        // Dialog opening is managed by the composable, not the ViewModel.
-        // This function exists for the UI to call as a semantic hook and for
-        // testability (verify the action was triggered).
+    fun onDelete(id: Long) {
+        viewModelScope.launch {
+            try {
+                deleteWallet(id)
+                loadWallets()
+                _navEvents.send(WalletNavEvent.ShowToast("Billetera eliminada"))
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _navEvents.send(
+                    WalletNavEvent.ShowToast(
+                        t.message ?: "No se pudo eliminar la billetera",
+                    ),
+                )
+            }
+        }
     }
 
-    /** Re-initiates the wallet fetch from the [WalletUiState.Error] state. */
+    /** Re-initiates the wallet fetch from the [WalletListUiState.Error] state. */
     fun onDismissError() {
-        loadWallet()
+        loadWallets()
+    }
+
+    /**
+     * Forces a re-fetch of the wallet list and per-wallet balances without
+     * going through [WalletListUiState.Loading]. Used by
+     * [com.vida.app.ui.FuentesScreen] to refresh balances after a transfer is
+     * recorded from another ViewModel — Room's reactive observation should
+     * already cover this, but the explicit refresh is a safety net while the
+     * reactive chain is being validated.
+     */
+    fun refresh() {
+        loadWallets(showLoading = false)
     }
 
     // ── Internal ─────────────────────────────────────────────────────────────
 
     /**
-     * Fetches the singleton wallet, its balance, and the last 5 wallet-sourced
-     * expenses in parallel, then emits the appropriate [WalletUiState].
+     * Fetches wallets, computes balance for each in parallel, and emits the
+     * appropriate [WalletListUiState] ([Ready], [Empty], or [Error]).
      *
-     * - [NoSuchElementException] from [GetWallet] → [WalletUiState.WalletNotFound]
-     * - Any other exception → [WalletUiState.Error]
+     * @param showLoading When true (default), the state is briefly set to
+     *   [WalletListUiState.Loading] before the subscription starts. The
+     *   [refresh] method passes `false` to avoid a visible loading flash when
+     *   re-fetching after an external mutation (e.g. a recorded transfer).
      */
-    private fun loadWallet() {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun loadWallets(showLoading: Boolean = true) {
         viewModelScope.launch {
-            _uiState.value = WalletUiState.Loading
+            if (showLoading) {
+                _uiState.value = WalletListUiState.Loading
+            }
             try {
-                val wallet = getWallet()
-                val now = Instant.now()
-
-                val expensesDeferred = getExpensesBySource(SourceType.WALLET, null, now)
-                val balanceDeferred = getWalletBalance(now)
-
-                val expenses = expensesDeferred.first()
-                    .sortedByDescending { it.dateTime }
-                    .take(5)
-                    .map { it.toDisplayItem() }
-
-                val walletItem = wallet.toDisplayItem(balanceDeferred)
-
-                _uiState.value = WalletUiState.Ready(
-                    wallet = walletItem,
-                    expenses = expenses,
-                )
-            } catch (e: NoSuchElementException) {
-                _uiState.value = WalletUiState.WalletNotFound
+                listWallets().flatMapLatest { wallets ->
+                    if (wallets.isEmpty()) {
+                        flow { emit(emptyList<WalletDisplayItem>()) }
+                    } else {
+                        combineWalletBalances(wallets)
+                    }
+                }.collect { items ->
+                    _uiState.value = if (items.isEmpty()) {
+                        WalletListUiState.Empty
+                    } else {
+                        WalletListUiState.Ready(wallets = items)
+                    }
+                }
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                _uiState.value = WalletUiState.Error(
-                    message = t.message ?: "No se pudo cargar la billetera",
+                _uiState.value = WalletListUiState.Error(
+                    message = t.message ?: "No se pudieron cargar las billeteras",
                 )
             }
         }
     }
 
     /**
-     * Maps a domain [Wallet] to a pre-formatted [WalletDisplayItem].
+     * Combines balance flows for all wallets into a single flow of display items.
      *
-     * - [WalletDisplayItem.balanceFormatted] uses the currency symbol + grouped
-     *   decimal formatting (e.g. "$1,250.50", "USD 1,250.50", "MLC 1,250.50").
+     * Each wallet's balance is observed reactively via [GetWalletBalance]; the
+     * `combine` re-emits whenever any individual balance flow emits, so the UI
+     * stays in sync after a transfer or expense without manual refetch.
      */
-    private fun Wallet.toDisplayItem(balance: Money): WalletDisplayItem {
+    private fun combineWalletBalances(wallets: List<Wallet>) =
+        combine(
+            wallets.map { wallet ->
+                getWalletBalance(wallet.id)
+                    .map { balance -> wallet.toDisplayItem(balance) }
+                    .catch { emit(wallet.toDisplayItemError()) }
+            },
+        ) { it.toList() }
+
+    /**
+     * Maps a domain [Wallet] to a pre-formatted [WalletDisplayItem].
+     */
+    private fun Wallet.toDisplayItem(balance: com.vida.domain.model.Money): WalletDisplayItem {
         val numberFormat = NumberFormat.getNumberInstance(Locale.US)
         numberFormat.minimumFractionDigits = 2
         numberFormat.maximumFractionDigits = 2
         val formattedAmount = numberFormat.format(balance.amount)
         return WalletDisplayItem(
+            id = id,
             name = name,
             currencyCode = currency.code,
             balanceFormatted = "${currency.symbol} $formattedAmount",
+            balance = balance,
             currency = currency,
         )
     }
 
     /**
-     * Maps a domain [Expense] to a pre-formatted [ExpenseDisplayItem].
-     *
-     * - [ExpenseDisplayItem.categoryName] uses [Expense.description] as a
-     *   pragmatic simplification (full category-name resolution would require a
-     *   [com.vida.domain.repository.CategoryRepository] dependency).
-     * - [ExpenseDisplayItem.amountFormatted] uses the currency symbol + amount
-     *   (e.g. "$15.75", "USD 42.00", "MLC 100.00").
-     * - [ExpenseDisplayItem.dateFormatted] is "dd/MM/yyyy" in system default zone.
+     * Maps a domain [Wallet] to a [WalletDisplayItem] with an error-indicating balance.
      */
-    private fun Expense.toDisplayItem(): ExpenseDisplayItem {
-        val numberFormat = NumberFormat.getNumberInstance(Locale.US)
-        numberFormat.minimumFractionDigits = 2
-        numberFormat.maximumFractionDigits = 2
-        val formattedAmount = "${amount.currency.symbol} ${numberFormat.format(amount.amount)}"
-
-        val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-        val zone = ZoneId.systemDefault()
-
-        return ExpenseDisplayItem(
+    private fun Wallet.toDisplayItemError(): WalletDisplayItem {
+        return WalletDisplayItem(
             id = id,
-            categoryName = description,
-            amountFormatted = formattedAmount,
-            dateFormatted = dateFormatter.format(dateTime.atZone(zone)),
+            name = name,
+            currencyCode = currency.code,
+            balanceFormatted = "${currency.symbol} —",
+            balance = balance,
+            currency = currency,
         )
     }
 }

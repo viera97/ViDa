@@ -4,9 +4,9 @@ import com.vida.domain.model.Wallet
 import com.vida.domain.repository.WalletRepository
 
 /**
- * Returns the singleton wallet. Throws (via the repo's `:data` impl) if no wallet
- * row has been seeded yet — callers must upsert first.
+ * Returns a wallet by [id]. Returns `null` if no wallet row exists for that id
+ * — callers must upsert first.
  */
 class GetWallet(private val repo: WalletRepository) {
-    suspend operator fun invoke(): Wallet = repo.get()
+    suspend operator fun invoke(id: Long): Wallet? = repo.getById(id)
 }

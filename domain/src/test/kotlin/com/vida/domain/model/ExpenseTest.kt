@@ -104,17 +104,18 @@ class ExpenseTest {
     }
 
     @Test
-    fun `WALLET source with non-null sourceId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Expense(
-                categoryId = 1L,
-                amount = cup("10"),
-                description = "X",
-                dateTime = now,
-                sourceType = SourceType.WALLET,
-                sourceId = 5L,
-            )
-        }
+    fun `WALLET source with non-null sourceId is accepted (real-id wallets)`() {
+        // After commit 5742918 wallets are real entities with row ids; the
+        // form passes the wallet's id as `sourceId` and the Expense must accept it.
+        val e = Expense(
+            categoryId = 1L,
+            amount = cup("10"),
+            description = "X",
+            dateTime = now,
+            sourceType = SourceType.WALLET,
+            sourceId = 5L,
+        )
+        assertEquals(5L, e.sourceId)
     }
 
     @Test

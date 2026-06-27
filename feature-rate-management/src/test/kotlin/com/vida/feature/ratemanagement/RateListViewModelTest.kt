@@ -42,6 +42,7 @@ class RateListViewModelTest {
             toCurrency = Currency.USD,
             rate = BigDecimal("120.50"),
             updatedAt = Instant.parse("2025-02-01T10:00:00Z"),
+            provider = "Manual",
         ),
         CurrencyRate(
             id = 2L,
@@ -49,6 +50,7 @@ class RateListViewModelTest {
             toCurrency = Currency.USD,
             rate = BigDecimal("119.00"),
             updatedAt = Instant.parse("2025-01-15T08:00:00Z"),
+            provider = "Manual",
         ),
         CurrencyRate(
             id = 3L,
@@ -56,6 +58,7 @@ class RateListViewModelTest {
             toCurrency = Currency.CUP,
             rate = BigDecimal("270.00"),
             updatedAt = Instant.parse("2025-03-10T14:00:00Z"),
+            provider = "Manual",
         ),
     )
 
@@ -238,6 +241,7 @@ class RateListViewModelTest {
                 to = Currency.MLC,
                 rate = BigDecimal("45.00"),
                 updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+                provider = "Manual",
             )
 
             val afterAdd = awaitItem() as RateListUiState.Ready
@@ -258,6 +262,7 @@ class RateListViewModelTest {
                 to = Currency.MLC,
                 rate = BigDecimal("45.00"),
                 updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+                provider = "Manual",
             )
 
             // SaveSuccess
@@ -280,6 +285,7 @@ class RateListViewModelTest {
             to = Currency.CUP,
             rate = BigDecimal("1.00"),
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         coVerify(inverse = true) { addCurrencyRate(any()) }
@@ -295,6 +301,7 @@ class RateListViewModelTest {
             to = Currency.USD,
             rate = BigDecimal.ZERO,
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         coVerify(inverse = true) { addCurrencyRate(any()) }
@@ -309,6 +316,7 @@ class RateListViewModelTest {
             to = Currency.USD,
             rate = BigDecimal("-5"),
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         coVerify(inverse = true) { addCurrencyRate(any()) }
@@ -344,6 +352,7 @@ class RateListViewModelTest {
                 to = Currency.USD,
                 rate = BigDecimal("125.00"),
                 updatedAt = sampleRates[0].updatedAt,
+                provider = "Manual",
             )
 
             val afterEdit = awaitItem() as RateListUiState.Ready
@@ -365,6 +374,7 @@ class RateListViewModelTest {
                 to = Currency.USD,
                 rate = BigDecimal("125.00"),
                 updatedAt = sampleRates[0].updatedAt,
+                provider = "Manual",
             )
 
             // SaveSuccess
@@ -395,6 +405,7 @@ class RateListViewModelTest {
             to = Currency.CUP,
             rate = BigDecimal("1.00"),
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         coVerify(inverse = true) { updateCurrencyRate(any()) }
@@ -417,6 +428,7 @@ class RateListViewModelTest {
                 to = Currency.USD,
                 rate = BigDecimal("125.00"),
                 updatedAt = sampleRates[0].updatedAt,
+                provider = "Manual",
             )
 
             // List preserved
@@ -612,6 +624,7 @@ class RateListViewModelTest {
             to = Currency.USD,
             rate = BigDecimal("120.50"),
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         coVerify(exactly = 1) { addCurrencyRate(any()) }
@@ -629,6 +642,7 @@ class RateListViewModelTest {
             to = Currency.USD,
             rate = BigDecimal("120.50"),
             updatedAt = Instant.now(),
+            provider = "Manual",
         )
 
         // With UnconfinedTestDispatcher the operation completes synchronously,
@@ -666,6 +680,7 @@ class RateListViewModelTest {
                 to = Currency.MLC,
                 rate = BigDecimal("45.00"),
                 updatedAt = Instant.now(),
+                provider = "Manual",
             )
 
             // State should NOT change — list preserved
@@ -685,6 +700,7 @@ class RateListViewModelTest {
                 to = Currency.MLC,
                 rate = BigDecimal("45.00"),
                 updatedAt = Instant.now(),
+                provider = "Manual",
             )
 
             val event = awaitItem() as RateNavEvent.ShowToast

@@ -6,13 +6,13 @@ import androidx.room.PrimaryKey
 import com.vida.domain.model.Currency
 
 /**
- * Singleton wallet row. CHECK (id = 1) is enforced at domain level (Wallet.init)
- * and repository level (WalletRepositoryImpl.upsert). SQL-level CHECK is a
- * nice-to-have deferred to a future migration.
+ * Wallet row with AUTOINCREMENT PK for multi-wallet support (v2).
  */
 @Entity(tableName = "wallets")
 data class WalletEntity(
-    @PrimaryKey val id: Long = 1L,
+    @PrimaryKey(autoGenerate = true) val id: Long = 0L,
     val currency: Currency,
     @ColumnInfo(name = "name") val name: String = "Billetera",
+    @ColumnInfo(name = "balance_minor") val balanceMinor: Long = 0,
+    @ColumnInfo(name = "initial_balance_currency") val initialBalanceCurrency: String = "CUP",
 )

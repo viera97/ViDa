@@ -20,6 +20,7 @@ import java.time.Instant
  * @property toCurrency the "to" side of the pair
  * @property rate multiplier such that `1 fromCurrency == rate toCurrency`
  * @property updatedAt when this snapshot was recorded (UTC)
+ * @property provider source from which the rate was obtained; defaults to "Manual"
  */
 data class CurrencyRate(
     val id: Long = 0L,
@@ -27,6 +28,7 @@ data class CurrencyRate(
     val toCurrency: Currency,
     val rate: BigDecimal,
     val updatedAt: Instant,
+    val provider: String = "Manual",
 ) {
     init {
         require(rate.signum() > 0) { "CurrencyRate rate must be positive" }

@@ -32,21 +32,21 @@ class GetTotalBalance(
 ) {
     suspend operator fun invoke(): Money {
         val now: Instant = clock()
+        val wallets = walletRepo.getAll().first()
         val cards = cardRepo.getAll().first()
         val stashes = stashRepo.getAll().first()
-        val wallet = runCatching { walletRepo.get() }.getOrNull()
 
         var total: Money = Money.ZERO_CUP
-        if (wallet != null) {
-            val balance = walletRepo.getBalance(now)
+        wallets.forEach { wallet ->
+            val balance = walletRepo.observeBalance(wallet.id).first()
             total += convertCurrency(balance, Currency.CUP, now) ?: Money.ZERO_CUP
         }
         cards.forEach { card ->
-            val balance = cardRepo.getBalance(card.id, now)
+            val balance = cardRepo.observeBalance(card.id).first()
             total += convertCurrency(balance, Currency.CUP, now) ?: Money.ZERO_CUP
         }
         stashes.forEach { stash ->
-            val balance = stashRepo.getBalance(stash.id, now)
+            val balance = stashRepo.observeBalance(stash.id).first()
             total += convertCurrency(balance, Currency.CUP, now) ?: Money.ZERO_CUP
         }
         return total

@@ -11,7 +11,7 @@ import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.SearchExpenses
 import com.vida.domain.usecase.stash.ListStashes
-import com.vida.domain.usecase.wallet.GetWallet
+import com.vida.domain.usecase.wallet.ListWallets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
@@ -38,7 +38,7 @@ class ExpenseListViewModel @Inject constructor(
     private val listCategories: ListCategories,
     private val listCards: ListCards,
     private val listStashes: ListStashes,
-    private val getWallet: GetWallet,
+    private val listWallets: ListWallets,
 ) : ViewModel() {
 
     companion object {
@@ -83,15 +83,29 @@ class ExpenseListViewModel @Inject constructor(
             try {
                 // Load metadata in parallel.
                 val cats = listCategories().first()
-                getWallet()
+                val wallets = listWallets().first()
                 val cards = listCards().first()
                 val stashes = listStashes().first()
 
                 categories = cats.associateBy { it.id }
 
                 sourceLabels = buildMap {
+                    // Wallets now have real row ids (commit 5742918). Show the
+                    // wallet's name (e.g. "Efectivo") instead of the hardcoded
+                    // "Billetera" — multiple wallets with distinct names should
+                    // be distinguishable in the list. The "WALLET:null" entry
+                    // covers legacy expenses written before the refactor.
+                    for (wallet in wallets) put("WALLET:${wallet.id}", wallet.name)
                     put("WALLET:null", "Billetera")
-                    for (card in cards) put("CARD:${card.id}", card.bank)
+                    // Cards: prefer the user-defined "Nombre de tarjeta" (stored
+                    // in `note`) and fall back to the bank name. Matches the
+                    // home summary display pattern.
+                    for (card in cards) {
+                        put(
+                            "CARD:${card.id}",
+                            card.note?.takeIf { it.isNotBlank() } ?: card.bank,
+                        )
+                    }
                     for (stash in stashes) put("STASH:${stash.id}", stash.name)
                 }
 

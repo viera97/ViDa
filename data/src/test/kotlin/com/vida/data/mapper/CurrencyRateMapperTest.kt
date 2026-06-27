@@ -19,6 +19,7 @@ class CurrencyRateMapperTest {
             toCurrency = Currency.CUP,
             rate = BigDecimal("24.50"),
             updatedAt = Instant.ofEpochMilli(5_000_000L),
+            provider = "Manual",
         )
         val entity = mapper.toEntity(rate)
         val roundTrip = mapper.toDomain(entity)
@@ -38,6 +39,7 @@ class CurrencyRateMapperTest {
             toCurrency = Currency.MLC,
             rate = BigDecimal("1.10"),
             updatedAt = Instant.ofEpochMilli(12345L),
+            provider = "Manual",
         )
         val entity = mapper.toEntity(rate)
         assertEquals(12345L, entity.effectiveDate)
@@ -74,6 +76,7 @@ class CurrencyRateMapperTest {
                 toCurrency = to,
                 rate = BigDecimal("10.00"),
                 updatedAt = Instant.ofEpochMilli(1_000L),
+                provider = "Manual",
             )
             val entity = mapper.toEntity(rate)
             val roundTrip = mapper.toDomain(entity)

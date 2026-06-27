@@ -13,6 +13,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -104,14 +107,6 @@ fun RecurringListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Gastos Recurrentes") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "\u2190",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-                    }
-                },
             )
         },
         floatingActionButton = {
@@ -164,7 +159,7 @@ fun RecurringListScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No hay plantillas",
+                                text = "No hay plantillas registradas",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -176,10 +171,6 @@ fun RecurringListScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { viewModel.onFabClick() }) {
-                                Text("Agregar plantilla")
-                            }
                         }
                     }
                 }

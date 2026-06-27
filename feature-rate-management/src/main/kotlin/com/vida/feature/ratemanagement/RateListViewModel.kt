@@ -67,7 +67,7 @@ class RateListViewModel @Inject constructor(
      * On success the list is refetched and [RateNavEvent.SaveSuccess] is emitted
      * (which closes the dialog). On error a toast is shown and the list is preserved.
      */
-    fun onAdd(from: Currency, to: Currency, rate: BigDecimal, updatedAt: Instant) {
+    fun onAdd(from: Currency, to: Currency, rate: BigDecimal, updatedAt: Instant, provider: String) {
         if (_isSaving.value) return
         if (from == to) return
         if (rate.signum() <= 0) return
@@ -82,6 +82,7 @@ class RateListViewModel @Inject constructor(
                         toCurrency = to,
                         rate = rate,
                         updatedAt = updatedAt,
+                        provider = provider,
                     ),
                 )
                 loadRates()
@@ -112,6 +113,7 @@ class RateListViewModel @Inject constructor(
         to: Currency,
         rate: BigDecimal,
         updatedAt: Instant,
+        provider: String,
     ) {
         if (_isSaving.value) return
         if (from == to) return
@@ -127,6 +129,7 @@ class RateListViewModel @Inject constructor(
                         toCurrency = to,
                         rate = rate,
                         updatedAt = updatedAt,
+                        provider = provider,
                     ),
                 )
                 loadRates()
@@ -235,6 +238,7 @@ class RateListViewModel @Inject constructor(
             rateFormatted = rate.setScale(2, RoundingMode.HALF_UP)
                 .stripTrailingZeros()
                 .toPlainString(),
+            provider = provider,
             updatedAt = updatedAt,
             updatedAtFormatted = formatter.format(updatedAt.atZone(zone)),
         )

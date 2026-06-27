@@ -138,19 +138,21 @@ class RecurringExpenseTest {
     }
 
     @Test
-    fun `WALLET source with non-null sourceId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            RecurringExpense(
-                amount = oneCup,
-                currency = Currency.CUP,
-                categoryId = 1L,
-                sourceType = SourceType.WALLET,
-                sourceId = 5L,
-                description = "X",
-                frequency = Frequency.MONTHLY,
-                startDate = start,
-            )
-        }
+    fun `WALLET source with non-null sourceId is accepted (real-id wallets)`() {
+        // After commit 5742918 wallets are real entities with row ids; the
+        // recurring-expense form passes the wallet's id as `sourceId` and the
+        // RecurringExpense must accept it.
+        val r = RecurringExpense(
+            amount = oneCup,
+            currency = Currency.CUP,
+            categoryId = 1L,
+            sourceType = SourceType.WALLET,
+            sourceId = 5L,
+            description = "X",
+            frequency = Frequency.MONTHLY,
+            startDate = start,
+        )
+        assertEquals(5L, r.sourceId)
     }
 
     @Test

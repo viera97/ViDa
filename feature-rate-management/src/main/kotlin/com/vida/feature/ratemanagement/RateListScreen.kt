@@ -6,13 +6,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -86,14 +90,6 @@ fun RateListScreen(
         topBar = {
             TopAppBar(
                 title = { Text("Tasas") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
-                    }
-                },
             )
         },
         floatingActionButton = {
@@ -122,7 +118,10 @@ fun RateListScreen(
                 }
 
                 is RateListUiState.Ready -> {
-                    LazyColumn(modifier = Modifier.fillMaxSize()) {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
                         items(
                             items = state.items,
                             key = { it.id },
@@ -144,7 +143,7 @@ fun RateListScreen(
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No hay tasas",
+                                text = "No hay tasas registradas",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -156,10 +155,6 @@ fun RateListScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = { showAddDialog = true }) {
-                                Text("Agregar tasa")
-                            }
                         }
                     }
                 }
@@ -193,8 +188,8 @@ fun RateListScreen(
             isEdit = false,
             isSaving = isSaving,
             onDismiss = { showAddDialog = false },
-            onSave = { from, to, rate, date ->
-                viewModel.onAdd(from, to, rate, date)
+            onSave = { from, to, rate, date, provider ->
+                viewModel.onAdd(from, to, rate, date, provider)
             },
         )
     }
@@ -205,12 +200,13 @@ fun RateListScreen(
             initialFrom = rate.fromCurrency,
             initialTo = rate.toCurrency,
             initialRate = rate.rateFormatted,
+            initialProvider = rate.provider,
             initialDate = rate.updatedAt,
             isEdit = true,
             isSaving = isSaving,
             onDismiss = { editingRate = null },
-            onSave = { from, to, rateVal, date ->
-                viewModel.onEdit(rate.id, from, to, rateVal, date)
+            onSave = { from, to, rateVal, date, provider ->
+                viewModel.onEdit(rate.id, from, to, rateVal, date, provider)
             },
         )
     }

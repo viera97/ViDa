@@ -16,19 +16,20 @@ private val cupLocaleFormat: NumberFormat by lazy {
 /**
  * Formats [this] [Money] as a human-readable string.
  *
- * Currency symbol is prepended for CUP; for USD/MLC the currency code is appended.
+ * The ISO currency code (CUP / USD / MLC / EUR) is always appended after the
+ * amount. Symbols ($ / €) are NOT used because ViDa's three of four supported
+ * currencies share the `$` glyph (CUP, USD, MLC) — code disambiguates them
+ * unambiguously, symbols don't.
  *
  * Examples:
- * - `Money(1250.50, CUP)` → "1,250.50 $"
+ * - `Money(1250.50, CUP)` → "1,250.50 CUP"
  * - `Money(99.00, USD)`   → "99.00 USD"
- * - `Money(0, CUP)`       → "0.00 $"
+ * - `Money(0, MLC)`       → "0.00 MLC"
+ * - `Money(10.00, EUR)`   → "10.00 EUR"
  */
 fun formatMoney(money: Money): String {
     val formattedAmount = cupLocaleFormat.format(money.amount)
-    return when (money.currency) {
-        Currency.CUP -> "$formattedAmount ${money.currency.symbol}"
-        Currency.USD, Currency.MLC -> "$formattedAmount ${money.currency.code}"
-    }
+    return "$formattedAmount ${money.currency.code}"
 }
 
 /**

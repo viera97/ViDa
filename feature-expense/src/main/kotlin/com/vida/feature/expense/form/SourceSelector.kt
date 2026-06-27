@@ -1,24 +1,27 @@
 package com.vida.feature.expense.form
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.vida.feature.expense.SourceItem
 
 /**
- * Trigger card for the source picker bottom sheet.
+ * Trigger field for the source picker bottom sheet.
  *
- * Shows the selected source label and currency when a source is selected,
- * or a placeholder label otherwise. Tapping the card invokes [onShowSheet].
+ * Renders as a disabled [OutlinedTextField] (transparent background, matching
+ * the rest of the expense form fields like [AmountSection] and
+ * [DescriptionInput]) wrapped in a clickable [Box]. Tapping the field invokes
+ * [onShowSheet].
+ *
+ * - When [selectedSource] is non-null, displays "label (CURRENCY)".
+ * - Otherwise displays a "Fuente de fondos" placeholder.
  *
  * @param selectedSource The currently selected source, or null.
  * @param onShowSheet Callback to open the source bottom sheet.
@@ -31,40 +34,36 @@ fun SourceSelector(
     error: String?,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedCard(
-        onClick = onShowSheet,
-        modifier = modifier.fillMaxWidth(),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(16.dp),
-        ) {
-            if (selectedSource != null) {
+    Box(modifier = modifier.fillMaxWidth().clickable(onClick = onShowSheet)) {
+        OutlinedTextField(
+            value = selectedSource?.label ?: "",
+            onValueChange = {},
+            label = {
                 Text(
-                    text = selectedSource.label,
-                    style = MaterialTheme.typography.bodyLarge,
+                    text = if (selectedSource != null) {
+                        "${selectedSource.label} (${selectedSource.currency.code})"
+                    } else {
+                        "Fuente de fondos"
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "(${selectedSource.currency.symbol})",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            } else {
-                Text(
-                    text = "Fuente de fondos",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-        if (error != null) {
-            Text(
-                text = error,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
-            )
-        }
+            },
+            isError = error != null,
+            supportingText = error?.let { msg -> { Text(msg) } },
+            readOnly = true,
+            enabled = false,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                disabledBorderColor = MaterialTheme.colorScheme.outline,
+                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledSupportingTextColor = MaterialTheme.colorScheme.error,
+            ),
+        )
     }
 }

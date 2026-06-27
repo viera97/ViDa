@@ -19,15 +19,19 @@ import com.vida.domain.model.Currency
 /**
  * Amount input with currency selector chips.
  *
- * Renders an [OutlinedTextField] for decimal amount entry alongside a row
- * of [FilterChip]s for [Currency.entries] (CUP, USD, MLC). Shows validation
- * error text below the text field.
+ * Renders an [OutlinedTextField] for decimal amount entry alongside a row of
+ * [FilterChip]s for [Currency.entries] (CUP, USD, MLC). Shows validation error
+ * text below the text field.
+ *
+ * Pass [onCurrencyChanged] = `null` to lock the currency (e.g. when a source is
+ * selected and its currency must be enforced). In that mode, only the current
+ * currency chip is shown and it is disabled.
  *
  * @param amount Current amount string value.
  * @param currency Currently selected currency.
  * @param amountError Validation error message from `validationErrors["amount"]`, or null.
  * @param onAmountChanged Callback when the amount text changes.
- * @param onCurrencyChanged Callback when a currency chip is selected.
+ * @param onCurrencyChanged Callback when a currency chip is selected. `null` locks the currency.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -36,9 +40,11 @@ fun AmountSection(
     currency: Currency,
     amountError: String?,
     onAmountChanged: (String) -> Unit,
-    onCurrencyChanged: (Currency) -> Unit,
     modifier: Modifier = Modifier,
+    onCurrencyChanged: ((Currency) -> Unit)? = null,
 ) {
+    val isLocked = onCurrencyChanged == null
+
     Column(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = amount,
@@ -54,11 +60,13 @@ fun AmountSection(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Currency.entries.forEach { entry ->
+            val entries = if (isLocked) listOf(currency) else Currency.entries.toList()
+            entries.forEach { entry ->
                 FilterChip(
                     selected = entry == currency,
-                    onClick = { onCurrencyChanged(entry) },
-                    label = { Text(entry.symbol) },
+                    onClick = { onCurrencyChanged?.invoke(entry) },
+                    enabled = !isLocked,
+                    label = { Text(entry.code) },
                 )
             }
         }

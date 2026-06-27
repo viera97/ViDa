@@ -1,8 +1,10 @@
 package com.vida.feature.expense
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,6 +15,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,7 +42,8 @@ import com.vida.domain.model.Currency
 import com.vida.feature.expense.form.AmountSection
 import com.vida.feature.expense.form.CategorySelector
 import com.vida.feature.expense.form.CategorySheet
-import com.vida.feature.expense.form.DateTimeSelector
+import com.vida.feature.expense.form.DateSelector
+import com.vida.feature.expense.form.TimeSelector
 import com.vida.feature.expense.form.DescriptionInput
 import com.vida.feature.expense.form.NoteInput
 import com.vida.feature.expense.form.SourceSelector
@@ -87,9 +93,9 @@ fun ExpenseFormScreen(
                 title = { Text("Nuevo gasto") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Text(
-                            text = "←",
-                            style = MaterialTheme.typography.headlineSmall,
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
                         )
                     }
                 },
@@ -109,6 +115,34 @@ fun ExpenseFormScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         CircularProgressIndicator()
+                    }
+                }
+
+                is ExpenseFormUiState.NoSources -> {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(16.dp),
+                        ) {
+                            Text(
+                                text = "Sin fuentes",
+                                style = MaterialTheme.typography.titleLarge,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "No hay fuentes registradas. Para registrar un gasto primero agregá una billetera, tarjeta o ahorro desde la sección Fuentes.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            androidx.compose.material3.Button(onClick = onNavigateBack) {
+                                Text("Volver")
+                            }
+                        }
                     }
                 }
 
@@ -253,7 +287,7 @@ private fun FormContent(
     onShowCategorySheet: () -> Unit,
     onShowSourceSheet: () -> Unit,
     onAmountChanged: (String) -> Unit,
-    onCurrencyChanged: (Currency) -> Unit,
+    onCurrencyChanged: ((Currency) -> Unit)?,
     onDescriptionChanged: (String) -> Unit,
     onDateTimeChanged: (Instant) -> Unit,
     onNoteChanged: (String) -> Unit,
@@ -291,10 +325,33 @@ private fun FormContent(
             error = ready.validationErrors["source"],
         )
         Spacer(modifier = Modifier.height(12.dp))
-        DateTimeSelector(
-            dateTime = ready.form.dateTime,
-            onChanged = onDateTimeChanged,
-        )
+        // Date and time as separate fields side by side. Each emits its own
+        // half; we combine them back into an Instant and forward to the VM.
+        val zone = java.time.ZoneId.systemDefault()
+        val currentDate = remember(ready.form.dateTime) {
+            ready.form.dateTime.atZone(zone).toLocalDate()
+        }
+        val currentTime = remember(ready.form.dateTime) {
+            ready.form.dateTime.atZone(zone).toLocalTime()
+        }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            DateSelector(
+                date = currentDate,
+                onChanged = { newDate ->
+                    onDateTimeChanged(newDate.atTime(currentTime).atZone(zone).toInstant())
+                },
+                modifier = Modifier.weight(1f),
+            )
+            TimeSelector(
+                time = currentTime,
+                onChanged = { newTime ->
+                    onDateTimeChanged(currentDate.atTime(newTime).atZone(zone).toInstant())
+                },
+                modifier = Modifier.weight(1f),
+            )
+        }
         Spacer(modifier = Modifier.height(12.dp))
         NoteInput(
             value = ready.form.note,

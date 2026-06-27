@@ -37,6 +37,7 @@ import java.time.ZoneId
  * - From currency ([FilterChip] row: CUP / USD / MLC)
  * - To currency ([FilterChip] row: CUP / USD / MLC)
  * - Rate ([OutlinedTextField], BigDecimal, required, > 0)
+ * - Provider ([OutlinedTextField], optional, defaults to "Manual")
  * - Date ([DatePickerDialog], default = today for new rates)
  *
  * Save is disabled when [isSaving] is true, rate is invalid (blank,
@@ -45,11 +46,12 @@ import java.time.ZoneId
  * @param initialFrom Default "from" currency (CUP).
  * @param initialTo Default "to" currency (USD).
  * @param initialRate Pre-populated rate string (empty for add).
+ * @param initialProvider Pre-populated provider string ("Manual" for add).
  * @param initialDate Pre-populated date (Instant.now() for add).
  * @param isEdit Whether this is an edit form (affects title).
  * @param isSaving Whether a save operation is in-flight (disables save button).
  * @param onDismiss Called when the dialog is dismissed.
- * @param onSave Called with (from, to, rate, date) when the user confirms.
+ * @param onSave Called with (from, to, rate, date, provider) when the user confirms.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,15 +59,17 @@ fun RateFormDialog(
     initialFrom: Currency = Currency.CUP,
     initialTo: Currency = Currency.USD,
     initialRate: String = "",
+    initialProvider: String = "Manual",
     initialDate: Instant = Instant.now(),
     isEdit: Boolean = false,
     isSaving: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (from: Currency, to: Currency, rate: BigDecimal, date: Instant) -> Unit,
+    onSave: (from: Currency, to: Currency, rate: BigDecimal, date: Instant, provider: String) -> Unit,
 ) {
     var fromCurrency by remember { mutableStateOf(initialFrom) }
     var toCurrency by remember { mutableStateOf(initialTo) }
     var rateText by remember { mutableStateOf(initialRate) }
+    var providerText by remember { mutableStateOf(initialProvider) }
     var selectedDate by remember { mutableStateOf(initialDate) }
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -154,6 +158,16 @@ fun RateFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
+                // Provider
+                OutlinedTextField(
+                    value = providerText,
+                    onValueChange = { providerText = it },
+                    label = { Text("Proveedor") },
+                    placeholder = { Text("Manual") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+
                 // Date picker
                 Text(
                     text = "Fecha",
@@ -171,7 +185,8 @@ fun RateFormDialog(
             TextButton(
                 onClick = {
                     parsedRate?.let { rate ->
-                        onSave(fromCurrency, toCurrency, rate, selectedDate)
+                        val finalProvider = providerText.ifBlank { "Manual" }
+                        onSave(fromCurrency, toCurrency, rate, selectedDate, finalProvider)
                     }
                 },
                 enabled = isSaveEnabled,

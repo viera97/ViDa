@@ -36,6 +36,7 @@ dependencies {
     implementation(libs.bundles.lifecycle.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation("androidx.compose.material:material-icons-core")
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)

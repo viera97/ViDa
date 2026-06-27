@@ -12,7 +12,7 @@ import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.SearchExpenses
 import com.vida.domain.usecase.stash.ListStashes
-import com.vida.domain.usecase.wallet.GetWallet
+import com.vida.domain.usecase.wallet.ListWallets
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -40,7 +40,7 @@ class ExpenseListViewModelTest {
     private lateinit var listCategories: ListCategories
     private lateinit var listCards: ListCards
     private lateinit var listStashes: ListStashes
-    private lateinit var getWallet: GetWallet
+    private lateinit var listWallets: ListWallets
 
     private val sampleCategories = listOf(
         Category(id = 1L, name = "Comida", color = -43904),
@@ -75,10 +75,10 @@ class ExpenseListViewModelTest {
         listCategories = mockk()
         listCards = mockk()
         listStashes = mockk()
-        getWallet = mockk()
+        listWallets = mockk()
 
-        // Default mocks: empty cards/stashes, default wallet, categories.
-        coEvery { getWallet() } returns sampleWallet
+        // Default mocks: one wallet, empty cards/stashes, categories.
+        every { listWallets() } returns flowOf(listOf(sampleWallet))
         every { listCategories() } returns flowOf(sampleCategories)
         every { listCards() } returns flowOf(emptyList())
         every { listStashes() } returns flowOf(emptyList())
@@ -95,7 +95,7 @@ class ExpenseListViewModelTest {
         listCategories = listCategories,
         listCards = listCards,
         listStashes = listStashes,
-        getWallet = getWallet,
+        listWallets = listWallets,
     )
 
     // ── SCN-LIST-001: First page loads successfully ──────────────────────────

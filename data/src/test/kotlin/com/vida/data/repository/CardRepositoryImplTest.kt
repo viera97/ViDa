@@ -21,7 +21,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
-import java.time.Instant
 import java.time.LocalDate
 
 class CardRepositoryImplTest {
@@ -83,24 +82,41 @@ class CardRepositoryImplTest {
     }
 
     @Test
-    fun `getBalance delegates to BalanceDao and converts minor units to Money in CUP`() = runTest {
-        val asOf = Instant.ofEpochMilli(10_000L)
-        every { balanceDao.getCardBalance(1L, asOf.toEpochMilli()) } returns
-            flowOf(CupTotalEntity(10_000L))
+    fun `observeBalance delegates to BalanceDao and converts minor units to Money`() = runTest {
+        coEvery { dao.getById(1L) } returns aCardEntity()
+        every { balanceDao.getCardBalance(any()) } returns flowOf(CupTotalEntity(10_000L))
 
-        val balance = repository.getBalance(1L, asOf)
-
-        // 10000 minor = 100.00 CUP
-        assertEquals(Money.of("100.00", Currency.CUP), balance)
+        repository.observeBalance(1L).test {
+            // 10000 minor = 100.00 in the card's currency (CUP for aCardEntity)
+            val money = awaitItem()
+            assertEquals(Money.of("100.00", Currency.CUP), money)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `getBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
-        every { balanceDao.getCardBalance(any(), any()) } returns flowOf(null)
+    fun `observeBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
+        coEvery { dao.getById(1L) } returns aCardEntity()
+        every { balanceDao.getCardBalance(any()) } returns flowOf(null)
 
-        val balance = repository.getBalance(1L)
+        repository.observeBalance(1L).test {
+            val money = awaitItem()
+            assertEquals(Money.ZERO_CUP, money)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-        assertEquals(Money.of("0.00", Currency.CUP), balance)
+    @Test
+    fun `observeBalance falls back to ZERO_CUP when underlying flow throws`() = runTest {
+        coEvery { dao.getById(1L) } returns aCardEntity()
+        every { balanceDao.getCardBalance(any()) } returns
+            kotlinx.coroutines.flow.flow { throw RuntimeException("DB exploded") }
+
+        repository.observeBalance(1L).test {
+            val money = awaitItem()
+            assertEquals(Money.ZERO_CUP, money)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     private fun aCardEntity() = CardEntity(

@@ -1,51 +1,50 @@
 package com.vida.feature.walletmanagement
 
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Money
 
 /**
- * UI state for the wallet management screen.
+ * UI state for the wallet list screen.
  *
  * Transitions:
  * ```
- * Loading → Ready | WalletNotFound | Error
+ * Loading → Ready | Empty | Error
  * Ready   → Ready (after mutation + refetch)
- * WalletNotFound → Ready (after upsert)
  * Error   → Loading → ... (on retry)
  * ```
  */
-sealed interface WalletUiState {
+sealed interface WalletListUiState {
 
     /** Emitted while the initial fetch is in-flight. */
-    data object Loading : WalletUiState
+    data object Loading : WalletListUiState
 
-    /** Wallet loaded with its info and the last 5 wallet-sourced expenses. */
-    data class Ready(
-        val wallet: WalletDisplayItem,
-        val expenses: List<ExpenseDisplayItem>,
-    ) : WalletUiState
+    /** Wallets loaded with pre-formatted display items. */
+    data class Ready(val wallets: List<WalletDisplayItem>) : WalletListUiState
 
-    /**
-     * No wallet row exists in the database — expected on first visit before
-     * the seed expense is recorded. NOT an error. User gets an upsert affordance.
-     */
-    data object WalletNotFound : WalletUiState
+    /** No wallets exist in the database. User gets an add affordance. */
+    data object Empty : WalletListUiState
 
     /** Initial load failed. Retry available via [WalletViewModel.onDismissError]. */
-    data class Error(val message: String) : WalletUiState
+    data class Error(val message: String) : WalletListUiState
 }
 
 /**
- * Pre-formatted display item for the wallet info card.
+ * Pre-formatted display item for a single wallet row.
  *
+ * @property id Wallet row id.
  * @property name Wallet name (e.g. "Billetera", "Mi Billetera").
  * @property currencyCode Currency code string ("CUP", "USD", "MLC") for badge rendering.
  * @property balanceFormatted Formatted balance (e.g. "$1,250.50").
+ * @property balance Raw stored [Money] balance. Used by edit dialogs to
+ *   pre-populate the input field without parsing the locale-aware formatted string.
  * @property currency Domain [Currency] enum for dialog pre-selection.
  */
 data class WalletDisplayItem(
+    val id: Long,
     val name: String,
     val currencyCode: String,
     val balanceFormatted: String,
+    val balance: Money,
     val currency: Currency,
 )
 
@@ -76,6 +75,6 @@ sealed class WalletNavEvent {
     /** Show a transient toast / snackbar message. */
     data class ShowToast(val message: String) : WalletNavEvent()
 
-    /** Emitted after an edit operation completes successfully. */
+    /** Emitted after an add or edit operation completes successfully. */
     data object SaveSuccess : WalletNavEvent()
 }

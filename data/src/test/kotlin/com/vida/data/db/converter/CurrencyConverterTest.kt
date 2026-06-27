@@ -33,7 +33,7 @@ class CurrencyConverterTest {
     @Test
     fun `throws on unknown currency code`() {
         assertThrows(IllegalArgumentException::class.java) {
-            converter.toCurrency("EUR")
+            converter.toCurrency("XYZ")
         }
     }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -78,6 +79,7 @@ fun RateListItem(
             // Details row: rate value + date
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = rate.rateFormatted,
@@ -90,6 +92,14 @@ fun RateListItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+
+            // Provider
+            Text(
+                text = "Proveedor: ${rate.provider}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
 
         // ── Context menu ─────────────────────────────────────────────────

@@ -1,6 +1,8 @@
 package com.vida.feature.cardmanagement
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,9 +15,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -44,6 +51,9 @@ import java.time.ZoneId
  * - Currency ([FilterChip] row: CUP / USD / MLC)
  * - Expiry date ([DatePickerDialog] → formatted as MM/YY)
  * - Note ([OutlinedTextField], optional, max 200 chars)
+ * - Balance ([OutlinedTextField], optional, decimal, default 0.00). The user-facing
+ *   label is "Balance" because the stored value IS the displayed balance — transfers
+ *   no longer auto-update it (Option B).
  *
  * Save is disabled when [isSaving] is true, bank is blank or whitespace-only,
  * first6 is not exactly 6 digits, or last4 is not exactly 4 digits.
@@ -55,10 +65,11 @@ import java.time.ZoneId
  * @param initialCurrency Default [Currency] selection (CUP).
  * @param initialExpiry Pre-populated expiry date (null for add, existing for edit).
  * @param initialNote Pre-populated note.
+ * @param balanceStr Pre-populated balance (plain number string, e.g. "1250.50").
  * @param isEdit Whether this is an edit form (affects title and button text).
  * @param isSaving Whether a save operation is in-flight (disables save button).
  * @param onDismiss Called when the dialog is dismissed.
- * @param onSave Called with (bank, first6, last4, type, currency, expiry, note)
+ * @param onSave Called with (bank, first6, last4, type, currency, expiry, note, balanceMinor)
  *   when the user confirms. Note is null when blank.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,18 +82,28 @@ fun CardFormDialog(
     initialCurrency: Currency = Currency.CUP,
     initialExpiry: LocalDate? = null,
     initialNote: String = "",
+    balanceStr: String = "",
     isEdit: Boolean = false,
     isSaving: Boolean = false,
     onDismiss: () -> Unit,
-    onSave: (bank: String, first6: String, last4: String, type: CardType, currency: Currency, expiry: LocalDate, note: String?) -> Unit,
+    onSave: (bank: String, first6: String, last4: String, type: CardType, currency: Currency, expiry: LocalDate, note: String?, balanceMinor: Long) -> Unit,
 ) {
-    var bank by remember { mutableStateOf(initialBank) }
-    var first6 by remember { mutableStateOf(initialFirst6) }
-    var last4 by remember { mutableStateOf(initialLast4) }
+    val banks = listOf("Bandec", "BPA", "Metropolitano")
+    val allBankOptions = banks + "Otros"
+    val isCustom = initialBank.isNotBlank() && initialBank !in banks
+    var selectedBank by remember { mutableStateOf(
+        if (isCustom) "Otros"
+        else initialBank.ifEmpty { "Bandec" }
+    ) }
+    var customBank by remember { mutableStateOf(if (isCustom) initialBank else "") }
+    val effectiveBank = if (selectedBank == "Otros") customBank else selectedBank
+    var cardNumber by remember { mutableStateOf(initialFirst6 + initialLast4) }
     var type by remember { mutableStateOf(initialType) }
     var currency by remember { mutableStateOf(initialCurrency) }
     var expiry by remember { mutableStateOf(initialExpiry) }
     var note by remember { mutableStateOf(initialNote) }
+    var balanceInput by remember { mutableStateOf(balanceStr) }
+    var bankDropdownExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     val datePickerState = rememberDatePickerState(
@@ -94,21 +115,17 @@ fun CardFormDialog(
 
     // ── Validation ───────────────────────────────────────────────────────────
 
-    /** True when first6 is empty OR exactly 6 digits. */
-    val first6Valid = first6.isEmpty() || (first6.length == 6 && first6.all { it.isDigit() })
-
-    /** True when last4 is empty OR exactly 4 digits. */
-    val last4Valid = last4.isEmpty() || (last4.length == 4 && last4.all { it.isDigit() })
-
-    val isBankBlank = bank.isBlank()
-    val first6Error: String? = if (!first6Valid && first6.isNotEmpty()) "Deben ser 6 dígitos" else null
-    val last4Error: String? = if (!last4Valid && last4.isNotEmpty()) "Deben ser 4 dígitos" else null
-    val noteError: String? = if (note.length > 200) "Máximo 200 caracteres" else null
+    val isBankBlank = effectiveBank.isBlank()
+    val cardNumberValid = cardNumber.all { it.isDigit() }
+    val cardNumberError: String? = when {
+        cardNumber.isNotEmpty() && !cardNumberValid -> "Solo dígitos"
+        cardNumber.isNotEmpty() && cardNumber.length < 10 -> "Mínimo 10 dígitos"
+        else -> null
+    }
 
     val isSaveEnabled = !isBankBlank &&
-        bank.length <= 100 &&
-        first6.length == 6 && first6Valid &&
-        last4.length == 4 && last4Valid &&
+        effectiveBank.length <= 100 &&
+        cardNumber.length >= 10 && cardNumberValid &&
         !isSaving
 
     // ── Date picker dialog ───────────────────────────────────────────────────
@@ -150,44 +167,70 @@ fun CardFormDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Bank name
+                // Card name
                 OutlinedTextField(
-                    value = bank,
-                    onValueChange = { if (it.length <= 100) bank = it },
-                    label = { Text("Banco") },
-                    isError = isBankBlank && bank.isNotEmpty(),
-                    supportingText = if (isBankBlank && bank.isNotEmpty()) {
-                        { Text("El banco es obligatorio") }
-                    } else {
-                        null
-                    },
+                    value = note,
+                    onValueChange = { if (it.length <= 200) note = it },
+                    label = { Text("Nombre de tarjeta") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // First 6 digits
+                // Card number (full, auto-extracts first 6 + last 4)
                 OutlinedTextField(
-                    value = first6,
-                    onValueChange = { if (it.length <= 6) first6 = it },
-                    label = { Text("Primeros 6 dígitos") },
-                    isError = first6Error != null,
-                    supportingText = first6Error?.let { { Text(it) } },
+                    value = cardNumber,
+                    onValueChange = { if (it.length <= 19 && it.all { c -> c.isDigit() }) cardNumber = it },
+                    label = { Text("Número de tarjeta") },
+                    isError = cardNumberError != null,
+                    supportingText = cardNumberError?.let { { Text(it) } },
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // Last 4 digits
-                OutlinedTextField(
-                    value = last4,
-                    onValueChange = { if (it.length <= 4) last4 = it },
-                    label = { Text("Últimos 4 dígitos") },
-                    isError = last4Error != null,
-                    supportingText = last4Error?.let { { Text(it) } },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                // Bank name — dropdown with predefined options
+                ExposedDropdownMenuBox(
+                    expanded = bankDropdownExpanded,
+                    onExpandedChange = { bankDropdownExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedBank.ifEmpty { "Otros" },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Banco") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bankDropdownExpanded) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = bankDropdownExpanded,
+                        onDismissRequest = { bankDropdownExpanded = false },
+                    ) {
+                        allBankOptions.forEach { option ->
+                            DropdownMenuItem(
+                                text = { Text(option) },
+                                onClick = {
+                                    selectedBank = option
+                                    bankDropdownExpanded = false
+                                },
+                            )
+                        }
+                    }
+                }
+                if (selectedBank == "Otros") {
+                    OutlinedTextField(
+                        value = customBank,
+                        onValueChange = { if (it.length <= 100) customBank = it },
+                        label = { Text("Nombre de tarjeta") },
+                        isError = effectiveBank.isBlank() && customBank.isNotEmpty(),
+                        supportingText = if (effectiveBank.isBlank() && customBank.isNotEmpty()) {
+                            { Text("El nombre es obligatorio") }
+                        } else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
 
                 // Card type — FilterChip row
                 Text("Tipo")
@@ -221,36 +264,50 @@ fun CardFormDialog(
                     }
                 }
 
-                // Expiry date — text field that opens DatePickerDialog
-                OutlinedTextField(
-                    value = expiry?.let { e ->
-                        val month = e.monthValue.toString().padStart(2, '0')
-                        val year = e.year.toString().takeLast(2)
-                        "$month/$year"
-                    } ?: "",
-                    onValueChange = {},
-                    label = { Text("Vencimiento (MM/YY)") },
-                    readOnly = true,
-                    enabled = true,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-
-                TextButton(onClick = { showDatePicker = true }) {
-                    Text(
-                        if (expiry != null) "Cambiar fecha" else "Seleccionar fecha",
+                // Expiry date — tap to open date picker.
+                // The OutlinedTextField consumes pointer events internally for
+                // cursor positioning, so a `clickable` modifier on its own
+                // modifier chain is not enough. We wrap it in a Box with
+                // `clickable` and set the field to `enabled = false` so it
+                // behaves as a purely visual element; the surrounding Box
+                // intercepts the tap reliably and opens the date picker.
+                // Custom disabled colors preserve the normal enabled look.
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showDatePicker = true },
+                ) {
+                    OutlinedTextField(
+                        value = expiry?.let { e ->
+                            val month = e.monthValue.toString().padStart(2, '0')
+                            val year = e.year.toString().takeLast(2)
+                            "$month/$year"
+                        } ?: "",
+                        onValueChange = {},
+                        label = { Text("Vencimiento (MM/YY)") },
+                        readOnly = true,
+                        enabled = false,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                            disabledBorderColor = MaterialTheme.colorScheme.outline,
+                            disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            disabledSupportingTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        ),
                     )
                 }
 
-                // Note (optional)
+                // Balance
                 OutlinedTextField(
-                    value = note,
-                    onValueChange = { if (it.length <= 200) note = it },
-                    label = { Text("Nota (opcional)") },
-                    isError = noteError != null,
-                    supportingText = noteError?.let { { Text(it) } },
-                    singleLine = false,
-                    maxLines = 3,
+                    value = balanceInput,
+                    onValueChange = { if (it.all { c -> c.isDigit() || c == '.' }) balanceInput = it },
+                    label = { Text("Balance") },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -260,14 +317,18 @@ fun CardFormDialog(
                 onClick = {
                     val safeExpiry = expiry ?: LocalDate.now().plusMonths(1)
                     val safeNote = note.trim().ifBlank { null }
+                    val minorUnits = balanceInput.toDoubleOrNull()?.let { (it * 100).toLong() } ?: 0L
+                    val extractedFirst6 = cardNumber.take(6)
+                    val extractedLast4 = cardNumber.takeLast(4)
                     onSave(
-                        bank.trim(),
-                        first6.trim(),
-                        last4.trim(),
+                        effectiveBank.trim(),
+                        extractedFirst6,
+                        extractedLast4,
                         type,
                         currency,
                         safeExpiry,
                         safeNote,
+                        minorUnits,
                     )
                 },
                 enabled = isSaveEnabled,

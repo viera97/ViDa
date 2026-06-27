@@ -44,9 +44,10 @@ import java.util.Locale
 private val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es", "ES"))
 
 private val Currency.displayLabel: String get() = when (this) {
-    Currency.CUP -> "CUP ($)"
+    Currency.CUP -> "CUP"
     Currency.USD -> "USD"
     Currency.MLC -> "MLC"
+    Currency.EUR -> "EUR"
 }
 
 private val SourceType.displayLabel: String get() = when (this) {
