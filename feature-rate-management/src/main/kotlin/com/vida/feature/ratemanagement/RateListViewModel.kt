@@ -62,6 +62,10 @@ class RateListViewModel @Inject constructor(
     /** In-memory cache of all rates, kept up-to-date with [loadRates]. */
     private var cachedRates: List<CurrencyRate> = emptyList()
 
+    /** Distinct providers present in [cachedRates], sorted alphabetically. */
+    private val _availableProviders = MutableStateFlow<List<String>>(emptyList())
+    val availableProviders: StateFlow<List<String>> = _availableProviders.asStateFlow()
+
     init {
         loadRates()
     }
@@ -288,9 +292,17 @@ class RateListViewModel @Inject constructor(
      * Used by [ConverterDialog] to perform live conversion without duplicating
      * the list logic.
      */
-    fun getRateForConversion(from: Currency, to: Currency): CurrencyRate? {
+    fun getRateForConversion(
+        from: Currency,
+        to: Currency,
+        provider: String = "Manual",
+    ): CurrencyRate? {
         return cachedRates
-            .filter { it.fromCurrency == from && it.toCurrency == to }
+            .filter {
+                it.fromCurrency == from &&
+                    it.toCurrency == to &&
+                    it.provider == provider
+            }
             .maxByOrNull { it.updatedAt }
     }
 
@@ -310,16 +322,20 @@ class RateListViewModel @Inject constructor(
             try {
                 val rates = listCurrencyRates().first()
                 cachedRates = rates
+                _availableProviders.value = rates.map { it.provider }.distinct().sorted()
 
-                val byPairKey = rates.groupBy { pairKey(it.fromCurrency, it.toCurrency) }
-                val items = byPairKey.values
-                    .map { group -> group.maxByOrNull { it.updatedAt }!! }
+                // Group by normalized pair key + provider. The normalized pair
+                // key collapses X→Y with Y→X into the same group; provider
+                // keeps different sources separated as different cards.
+                val byGroup = rates.groupBy { groupKey(it.fromCurrency, it.toCurrency, it.provider) }
+                val items = byGroup.values
+                    .map { group -> buildDisplayItem(group) }
                     .sortedWith(
-                        compareBy<CurrencyRate> { it.fromCurrency.code }
+                        compareBy<RateDisplayItem> { it.fromCurrency.code }
                             .thenBy { it.toCurrency.code }
+                            .thenBy { it.provider }
                             .thenByDescending { it.updatedAt },
                     )
-                    .map { primary -> buildDisplayItem(primary, rates) }
 
                 _uiState.value = if (items.isEmpty()) {
                     RateListUiState.Empty
@@ -336,16 +352,44 @@ class RateListViewModel @Inject constructor(
     }
 
     /**
-     * Builds a [RateDisplayItem] for [primary], attaching its inverse rate
-     * from [allRates] when one exists.
+     * Builds a single [RateDisplayItem] for a group of rates sharing the same
+     * normalized pair and provider.
+     *
+     * - Primary direction: the one with the lexicographically smaller
+     *   `fromCurrency.code` first (e.g. CUP→USD before USD→CUP). If only one
+     *   direction exists, it is the primary regardless.
+     * - Most-recent wins per direction (handles historical snapshots).
+     * - The inverse is the other direction (when present) for the same
+     *   provider.
      */
-    private fun buildDisplayItem(primary: CurrencyRate, allRates: List<CurrencyRate>): RateDisplayItem {
+    private fun buildDisplayItem(group: List<CurrencyRate>): RateDisplayItem {
         val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
         val zone = ZoneId.systemDefault()
-        val inverse = allRates
-            .filter { it.fromCurrency == primary.toCurrency && it.toCurrency == primary.fromCurrency }
-            .maxByOrNull { it.updatedAt }
-            ?.let { inv ->
+
+        // Within the group, keep only the most recent rate per direction.
+        val byDirection = group.groupBy { it.fromCurrency to it.toCurrency }
+        val latestPerDirection = byDirection.values.map { dir ->
+            dir.maxByOrNull { it.updatedAt }!!
+        }
+
+        // Primary direction: alphabetically smaller fromCurrency wins.
+        val primaryDirection = latestPerDirection.minByOrNull { it.fromCurrency.code }!!
+        val inverseDirection = latestPerDirection.firstOrNull {
+            it.fromCurrency == primaryDirection.toCurrency &&
+                it.toCurrency == primaryDirection.fromCurrency
+        }
+
+        return RateDisplayItem(
+            id = primaryDirection.id,
+            fromCurrency = primaryDirection.fromCurrency,
+            toCurrency = primaryDirection.toCurrency,
+            pairLabel = "${primaryDirection.fromCurrency.code} → ${primaryDirection.toCurrency.code}",
+            rate = primaryDirection.rate,
+            rateFormatted = formatRate(primaryDirection.rate),
+            provider = primaryDirection.provider,
+            updatedAt = primaryDirection.updatedAt,
+            updatedAtFormatted = formatter.format(primaryDirection.updatedAt.atZone(zone)),
+            inverse = inverseDirection?.let { inv ->
                 InverseRateDisplay(
                     id = inv.id,
                     fromCurrency = inv.fromCurrency,
@@ -353,29 +397,20 @@ class RateListViewModel @Inject constructor(
                     rate = inv.rate,
                     rateFormatted = formatRate(inv.rate),
                 )
-            }
-        return RateDisplayItem(
-            id = primary.id,
-            fromCurrency = primary.fromCurrency,
-            toCurrency = primary.toCurrency,
-            pairLabel = "${primary.fromCurrency.code} → ${primary.toCurrency.code}",
-            rate = primary.rate,
-            rateFormatted = formatRate(primary.rate),
-            provider = primary.provider,
-            updatedAt = primary.updatedAt,
-            updatedAtFormatted = formatter.format(primary.updatedAt.atZone(zone)),
-            inverse = inverse,
+            },
         )
     }
 
     /**
-     * Returns a stable pair key for grouping the inverse of X→Y with Y→X.
-     * Both directions produce the same key so they collapse into one card.
+     * Normalized group key: collapses X→Y with Y→X into the same bucket,
+     * but keeps different providers as separate buckets so BCV and Manual
+     * rates for the same pair render as two distinct cards.
      */
-    private fun pairKey(from: Currency, to: Currency): String {
+    private fun groupKey(from: Currency, to: Currency, provider: String): String {
         val a = from.code
         val b = to.code
-        return if (a <= b) "$a-$b" else "$b-$a"
+        val pair = if (a <= b) "$a-$b" else "$b-$a"
+        return "$pair@$provider"
     }
 
     /** Inverse of a rate: 1 / rate, scaled to 10 decimals with HALF_UP. */

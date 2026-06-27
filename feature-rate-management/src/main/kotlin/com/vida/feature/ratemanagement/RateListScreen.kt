@@ -65,6 +65,7 @@ fun RateListScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    val availableProviders by viewModel.availableProviders.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
@@ -269,9 +270,10 @@ fun RateListScreen(
     if (showConverter) {
         ConverterDialog(
             onDismiss = { showConverter = false },
-            getRate = { from, to ->
-                viewModel.getRateForConversion(from, to)
+            getRate = { from, to, provider ->
+                viewModel.getRateForConversion(from, to, provider)
             },
+            availableProviders = availableProviders,
         )
     }
 }

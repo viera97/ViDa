@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -538,10 +539,10 @@ class RateListViewModelTest {
     }
 
     @Test
-    fun `getRateForConversion returns latest matching rate`() {
+    fun `getRateForConversion returns latest matching rate for given provider`() {
         val vm = createVm()
 
-        val rate = vm.getRateForConversion(Currency.CUP, Currency.USD)
+        val rate = vm.getRateForConversion(Currency.CUP, Currency.USD, "Manual")
         assertNotNull(rate)
         // id=1 is the latest CUP→USD (2025-02-01 > 2025-01-15)
         assertEquals(1L, rate!!.id)
@@ -549,11 +550,83 @@ class RateListViewModelTest {
     }
 
     @Test
+    fun `getRateForConversion defaults to Manual provider when omitted`() {
+        val vm = createVm()
+
+        val rate = vm.getRateForConversion(Currency.CUP, Currency.USD)
+        assertNotNull(rate)
+        assertEquals("Manual", rate!!.provider)
+    }
+
+    @Test
     fun `getRateForConversion returns null for missing pair`() {
         val vm = createVm()
 
-        val rate = vm.getRateForConversion(Currency.USD, Currency.MLC)
+        val rate = vm.getRateForConversion(Currency.USD, Currency.MLC, "Manual")
         assertNull(rate)
+    }
+
+    @Test
+    fun `getRateForConversion filters by provider`() = runTest {
+        // Add a BCV rate for the same pair so we can verify provider filter
+        val ratesWithBcv = sampleRates + CurrencyRate(
+            id = 10L,
+            fromCurrency = Currency.CUP,
+            toCurrency = Currency.USD,
+            rate = BigDecimal("118.00"),
+            updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+            provider = "BCV",
+        )
+        every { listCurrencyRates() } returns flowOf(ratesWithBcv)
+
+        val vm = createVm()
+
+        // Manual still resolves to id=1 (latest Manual rate)
+        assertEquals(1L, vm.getRateForConversion(Currency.CUP, Currency.USD, "Manual")!!.id)
+        // BCV resolves to id=10
+        assertEquals(10L, vm.getRateForConversion(Currency.CUP, Currency.USD, "BCV")!!.id)
+        // Unknown provider → null
+        assertNull(vm.getRateForConversion(Currency.CUP, Currency.USD, "Desconocido"))
+    }
+
+    @Test
+    fun `availableProviders exposes distinct providers sorted`() = runTest {
+        val vm = createVm()
+
+        vm.availableProviders.test {
+            // UnconfinedTestDispatcher runs init { loadRates() } before we
+            // subscribe, so the first emission is the post-load value.
+            val providers = awaitItem()
+            assertEquals(listOf("Manual"), providers)
+        }
+    }
+
+    @Test
+    fun `availableProviders includes new providers after add`() = runTest {
+        // Add a BCV rate
+        val bcvRate = CurrencyRate(
+            id = 20L,
+            fromCurrency = Currency.MLC,
+            toCurrency = Currency.USD,
+            rate = BigDecimal("2.30"),
+            updatedAt = Instant.now(),
+            provider = "BCV",
+        )
+        // After init consumes the first flow, every subsequent invocation
+        // returns the enriched list.
+        every { listCurrencyRates() } returns flowOf(sampleRates + bcvRate)
+        coEvery { addCurrencyRate(any<CurrencyRate>()) } returns 20L
+
+        val vm = createVm()
+
+        // After init + initial load, "BCV" and "Manual" are both present
+        assertEquals(listOf("BCV", "Manual"), vm.availableProviders.value)
+
+        // Adding a brand-new pair (CUP→MLC) with BCV should keep both providers
+        vm.onAdd(Currency.CUP, Currency.MLC, BigDecimal("2.30"), Instant.now(), "BCV")
+        advanceUntilIdle()
+
+        assertEquals(listOf("BCV", "Manual"), vm.availableProviders.value)
     }
 
     @Test
@@ -566,6 +639,86 @@ class RateListViewModelTest {
             // sampleRates inverse id=2 has rate 0.0083 — small rates keep more precision
             assertEquals("0.0083", cupUsd.inverse!!.rateFormatted)
         }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // R9 — Provider-segregated cards (bug fix: same pair, different providers)
+    // ══════════════════════════════════════════════════════════════════════
+
+    @Test
+    fun `same pair with different providers renders as two separate cards`() = runTest {
+        // Add a BCV rate for the same CUP→USD pair as the existing Manual rate
+        val ratesWithBcv = sampleRates + CurrencyRate(
+            id = 10L,
+            fromCurrency = Currency.CUP,
+            toCurrency = Currency.USD,
+            rate = BigDecimal("118.00"),
+            updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+            provider = "BCV",
+        ) + CurrencyRate(
+            // Auto-created inverse of the BCV rate
+            id = 11L,
+            fromCurrency = Currency.USD,
+            toCurrency = Currency.CUP,
+            rate = BigDecimal("0.00847"),
+            updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+            provider = "BCV",
+        )
+        every { listCurrencyRates() } returns flowOf(ratesWithBcv)
+
+        val vm = createVm()
+
+        vm.uiState.test {
+            val ready = awaitItem() as RateListUiState.Ready
+            // CUP↔USD Manual (1 card) + CUP↔USD BCV (1 card) + MLC→CUP Manual (1 card) = 3 cards
+            assertEquals(3, ready.items.size)
+
+            val manualCupUsd = ready.items.first { it.provider == "Manual" && it.pairLabel == "CUP → USD" }
+            val bcvCupUsd = ready.items.first { it.provider == "BCV" && it.pairLabel == "CUP → USD" }
+
+            // Manual card keeps its original rate
+            assertEquals(BigDecimal("120.50"), manualCupUsd.rate)
+            assertNotNull(manualCupUsd.inverse)
+            assertEquals(2L, manualCupUsd.inverse!!.id)
+
+            // BCV card has its own rate and inverse
+            assertEquals(BigDecimal("118.00"), bcvCupUsd.rate)
+            assertNotNull(bcvCupUsd.inverse)
+            assertEquals(11L, bcvCupUsd.inverse!!.id)
+            assertEquals("USD → CUP", bcvCupUsd.inverse.pairLabelFromCodes())
+        }
+    }
+
+    @Test
+    fun `deleting one provider card leaves the other untouched`() = runTest {
+        // Setup: two providers for CUP↔USD
+        val ratesWithBcv = sampleRates + CurrencyRate(
+            id = 10L,
+            fromCurrency = Currency.CUP,
+            toCurrency = Currency.USD,
+            rate = BigDecimal("118.00"),
+            updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+            provider = "BCV",
+        ) + CurrencyRate(
+            id = 11L,
+            fromCurrency = Currency.USD,
+            toCurrency = Currency.CUP,
+            rate = BigDecimal("0.00847"),
+            updatedAt = Instant.parse("2026-01-01T10:00:00Z"),
+            provider = "BCV",
+        )
+        every { listCurrencyRates() } returns flowOf(ratesWithBcv)
+
+        val vm = createVm()
+
+        // Delete the Manual CUP→USD card (id=1, inverse id=2)
+        vm.onDelete(1L)
+
+        // Only Manual primary + inverse deleted, BCV untouched
+        coVerify(exactly = 1) { deleteCurrencyRate(1L) }
+        coVerify(exactly = 1) { deleteCurrencyRate(2L) }
+        coVerify(exactly = 0) { deleteCurrencyRate(10L) }
+        coVerify(exactly = 0) { deleteCurrencyRate(11L) }
     }
 }
 

@@ -9,6 +9,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,8 +42,12 @@ import java.math.RoundingMode
  * - Amount ([OutlinedTextField] with decimal keyboard)
  * - Result text — recomputed live as inputs change
  *
- * If [getRate] returns null for the selected pair, an inline message
- * "No hay tasa configurada para X → Y" is shown and the result field is hidden.
+ * If [getRate] returns null for the selected pair/provider, an inline message
+ * "No hay tasa configurada para X → Y (proveedor)" is shown and the result
+ * field is hidden.
+ *
+ * The provider selector above the amount defaults to "Manual" when present
+ * in [availableProviders]; otherwise it defaults to the first available.
  *
  * Buttons:
  * - "Cerrar" — dismisses the dialog
@@ -48,16 +56,28 @@ import java.math.RoundingMode
  *
  * @param onDismiss Called when the dialog is dismissed.
  * @param getRate Lookup function returning the most recent [CurrencyRate] for
- *   the given pair, or null if none configured.
+ *   the given pair and provider, or null if none configured.
+ * @param availableProviders Distinct providers that have at least one rate
+ *   configured. The dropdown shows these options.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConverterDialog(
     onDismiss: () -> Unit,
-    getRate: (from: Currency, to: Currency) -> CurrencyRate?,
+    getRate: (from: Currency, to: Currency, provider: String) -> CurrencyRate?,
+    availableProviders: List<String>,
 ) {
     var fromCurrency by remember { mutableStateOf(Currency.USD) }
     var toCurrency by remember { mutableStateOf(Currency.CUP) }
     var amountText by remember { mutableStateOf("") }
+
+    // Default provider: "Manual" if available, else first entry, else "Manual".
+    val defaultProvider = availableProviders.firstOrNull { it == "Manual" }
+        ?: availableProviders.firstOrNull()
+        ?: "Manual"
+    var selectedProvider by remember(availableProviders) { mutableStateOf(defaultProvider) }
+    var providerMenuExpanded by remember { mutableStateOf(false) }
+
     val context = LocalContext.current
 
     // ── Amount parsing ───────────────────────────────────────────────────
@@ -69,7 +89,8 @@ fun ConverterDialog(
     val fromEqualsTo = fromCurrency == toCurrency
 
     // ── Rate lookup ───────────────────────────────────────────────────────
-    val rate: CurrencyRate? = if (fromEqualsTo) null else getRate(fromCurrency, toCurrency)
+    val rate: CurrencyRate? = if (fromEqualsTo) null
+    else getRate(fromCurrency, toCurrency, selectedProvider)
 
     val amountError: String? = when {
         amountText.isBlank() -> null
@@ -141,10 +162,46 @@ fun ConverterDialog(
                     )
                 } else if (rate == null) {
                     Text(
-                        text = "No hay tasa configurada para ${fromCurrency.code} → ${toCurrency.code}",
+                        text = "No hay tasa configurada para ${fromCurrency.code} → ${toCurrency.code} ($selectedProvider)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
+                }
+
+                // Provider selector — above Cantidad
+                ExposedDropdownMenuBox(
+                    expanded = providerMenuExpanded,
+                    onExpandedChange = { providerMenuExpanded = it },
+                ) {
+                    OutlinedTextField(
+                        value = selectedProvider,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Proveedor") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(
+                                expanded = providerMenuExpanded,
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = providerMenuExpanded,
+                        onDismissRequest = { providerMenuExpanded = false },
+                    ) {
+                        availableProviders.forEach { provider ->
+                            DropdownMenuItem(
+                                text = { Text(provider) },
+                                onClick = {
+                                    selectedProvider = provider
+                                    providerMenuExpanded = false
+                                },
+                            )
+                        }
+                    }
                 }
 
                 // Amount
