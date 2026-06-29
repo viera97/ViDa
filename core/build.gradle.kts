@@ -27,6 +27,8 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.hilt.android)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation("androidx.compose.material:material-icons-extended")
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

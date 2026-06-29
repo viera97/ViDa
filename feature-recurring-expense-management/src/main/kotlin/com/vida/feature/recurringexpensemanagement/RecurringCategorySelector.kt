@@ -1,4 +1,4 @@
-package com.vida.feature.expense.form
+package com.vida.feature.recurringexpensemanagement
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -20,27 +19,29 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.vida.core.icon.iconNameToImageVector
 import com.vida.domain.model.Category
 
 /**
- * Trigger field for the category picker bottom sheet.
+ * Trigger field for the recurring expense category picker bottom sheet.
  *
  * Renders as a disabled [OutlinedTextField] (transparent background, matching
- * the rest of the expense form fields like [AmountSection] and
- * [DescriptionInput]) wrapped in a clickable [Box]. Tapping the field invokes
- * [onShowSheet].
+ * the rest of the recurring form fields) wrapped in a clickable [Box]. Tapping
+ * the field invokes [onShowSheet].
  *
  * - When [selectedCategory] is non-null, displays a colored dot + icon + category name.
  * - Otherwise displays a "Categoría" placeholder.
  *
+ * Mirrors `feature-expense`'s [CategorySelector] for visual consistency.
+ *
  * @param selectedCategory The currently selected category, or null.
  * @param onShowSheet Callback to open the category bottom sheet.
- * @param error Validation error message from `validationErrors["category"]`, or null.
+ * @param error Validation error message, or null.
  */
 @Composable
-fun CategorySelector(
+fun RecurringCategorySelector(
     selectedCategory: Category?,
     onShowSheet: () -> Unit,
     error: String?,
@@ -67,7 +68,11 @@ fun CategorySelector(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(selectedCategory.name)
+                        Text(
+                            text = selectedCategory.name,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     } else {
                         Text("Categoría")
                     }

@@ -56,6 +56,7 @@ class CategoryListViewModelTest {
         coEvery { deleteCategory(any<Long>()) } returns Unit
         coEvery { addCategory(any()) } returns 5L
         coEvery { updateCategory(any()) } returns 5L
+        coEvery { getCategory(any<Long>()) } returns null
     }
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -573,6 +574,25 @@ class CategoryListViewModelTest {
 
         coVerify(exactly = 1) {
             updateCategory(match { it.id == 3L && !it.isSystem })
+        }
+    }
+
+    @Test
+    fun `onEdit preserves icon from database when new icon is null`() = runTest {
+        coEvery { getCategory(3L) } returns Category(
+            id = 3L,
+            name = "Viajes",
+            color = -7617718,
+            icon = "flight",
+            isSystem = false,
+        )
+
+        val vm = createVm()
+
+        vm.onEdit(3L, "Viajes Edit", 0xFF4CAF50.toInt()) // icon defaults to null
+
+        coVerify(exactly = 1) {
+            updateCategory(match { it.id == 3L && it.icon == "flight" })
         }
     }
 

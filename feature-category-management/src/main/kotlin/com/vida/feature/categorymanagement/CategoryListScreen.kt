@@ -191,7 +191,7 @@ fun CategoryListScreen(
             isEdit = false,
             isSaving = isSaving,
             onDismiss = { showAddDialog = false },
-            onSave = { name, color -> viewModel.onAdd(name, color) },
+            onSave = { name, color, icon -> viewModel.onAdd(name, color, icon) },
         )
     }
 
@@ -200,10 +200,11 @@ fun CategoryListScreen(
         CategoryFormDialog(
             initialName = item.name,
             initialColor = item.color,
+            initialIcon = item.icon,
             isEdit = true,
             isSaving = isSaving,
             onDismiss = { editingCategory = null },
-            onSave = { name, color -> viewModel.onEdit(item.id, name, color) },
+            onSave = { name, color, icon -> viewModel.onEdit(item.id, name, color, icon) },
         )
     }
 

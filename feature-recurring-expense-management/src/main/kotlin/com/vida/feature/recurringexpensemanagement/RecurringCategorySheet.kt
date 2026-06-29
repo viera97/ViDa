@@ -1,6 +1,5 @@
-package com.vida.feature.expense.form
+package com.vida.feature.recurringexpensemanagement
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -10,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -21,7 +21,6 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -31,10 +30,12 @@ import com.vida.domain.model.Category
 /**
  * Modal bottom sheet displaying a grid of category chips.
  *
- * Each category chip shows an icon (if available) and the category name on a
- * background colored with [Category.color]. The currently selected category is
- * highlighted. Tapping a chip selects it and invokes [onCategorySelected] with
- * the category id.
+ * Each chip shows an icon (if available) and the category name on a background
+ * tinted with [Category.color]. The currently selected category is highlighted
+ * with full opacity + tonal elevation. Tapping a chip selects it and invokes
+ * [onCategorySelected] with the category id.
+ *
+ * Mirrors `feature-expense`'s [CategorySheet] for visual consistency.
  *
  * @param categories Available categories to display.
  * @param selectedId The currently selected category id, or null.
@@ -43,7 +44,7 @@ import com.vida.domain.model.Category
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CategorySheet(
+fun RecurringCategorySheet(
     categories: List<Category>,
     selectedId: Long?,
     onDismiss: () -> Unit,
@@ -60,17 +61,14 @@ fun CategorySheet(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
         ) {
             items(
-                count = categories.size,
-                key = { categories[it].id },
-            ) { index ->
-                val category = categories[index]
-                val isSelected = category.id == selectedId
-
+                items = categories,
+                key = { it.id },
+            ) { category ->
                 CategoryChip(
                     name = category.name,
                     color = Color(category.color),
                     icon = category.icon?.let { iconNameToImageVector(it) },
-                    selected = isSelected,
+                    selected = category.id == selectedId,
                     onClick = { onCategorySelected(category.id) },
                 )
             }
@@ -78,11 +76,6 @@ fun CategorySheet(
     }
 }
 
-/**
- * Individual category chip rendered in the [CategorySheet] grid.
- *
- * Shows an icon (if available) above the category name, stacked vertically.
- */
 @Composable
 private fun CategoryChip(
     name: String,

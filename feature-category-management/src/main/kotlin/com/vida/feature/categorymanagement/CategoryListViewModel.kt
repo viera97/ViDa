@@ -103,13 +103,14 @@ class CategoryListViewModel @Inject constructor(
     }
 
     /**
-     * Creates a new user category with [name] and [color], then refetches the list.
+     * Creates a new user category with [name], [color], and optional [icon],
+     * then refetches the list.
      *
      * Validation (defence-in-depth — domain [Category.init] requires 1..50 non-blank):
      * rejects blank/whitespace-only names before calling the use case.
      * On success emits [CategoryNavEvent.SaveSuccess] so the screen can close the dialog.
      */
-    fun onAdd(name: String, color: Int) {
+    fun onAdd(name: String, color: Int, icon: String? = null) {
         if (_isSaving.value) return
 
         val trimmed = name.trim()
@@ -125,7 +126,7 @@ class CategoryListViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                addCategory(Category(name = trimmed, color = color))
+                addCategory(Category(name = trimmed, color = color, icon = icon))
                 loadCategories()
                 _navEvents.send(CategoryNavEvent.SaveSuccess)
             } catch (t: Throwable) {
@@ -142,12 +143,13 @@ class CategoryListViewModel @Inject constructor(
     }
 
     /**
-     * Updates an existing category's [name] and [color], preserving its
-     * [Category.isSystem] flag. Refetches the list on success.
+     * Updates an existing category's [name], [color], and optional [icon],
+     * preserving its [Category.isSystem] flag. If [icon] is null the existing
+     * icon from the database is preserved. Refetches the list on success.
      *
      * On success emits [CategoryNavEvent.SaveSuccess].
      */
-    fun onEdit(id: Long, name: String, color: Int) {
+    fun onEdit(id: Long, name: String, color: Int, icon: String? = null) {
         if (_isSaving.value) return
 
         val trimmed = name.trim()
@@ -167,11 +169,14 @@ class CategoryListViewModel @Inject constructor(
         viewModelScope.launch {
             _isSaving.value = true
             try {
+                // Fetch the existing category to preserve its icon when not changed
+                val existing = getCategory(id)
                 updateCategory(
                     Category(
                         id = id,
                         name = trimmed,
                         color = color,
+                        icon = icon ?: existing?.icon,
                         isSystem = existingIsSystem,
                     ),
                 )
@@ -232,6 +237,7 @@ class CategoryListViewModel @Inject constructor(
         id = id,
         name = name,
         color = color,
+        icon = icon,
         isSystem = isSystem,
     )
 }

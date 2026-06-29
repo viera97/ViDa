@@ -13,6 +13,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -74,6 +76,7 @@ fun RateListScreen(
     var editingRate by remember { mutableStateOf<RateDisplayItem?>(null) }
     var showDeleteConfirm by remember { mutableStateOf<RateDisplayItem?>(null) }
     var showConverter by remember { mutableStateOf(false) }
+    var showProDialog by remember { mutableStateOf(false) }
 
     // Observe one-shot navigation events.
     LaunchedEffect(Unit) {
@@ -107,10 +110,13 @@ fun RateListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.End,
             ) {
-                FloatingActionButton(
-                    onClick = { showConverter = true },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                ) {
+                FloatingActionButton(onClick = { showProDialog = true }) {
+                    Icon(
+                        imageVector = Icons.Filled.Sync,
+                        contentDescription = "Sincronización automática",
+                    )
+                }
+                FloatingActionButton(onClick = { showConverter = true }) {
                     Icon(
                         imageVector = Icons.Filled.Calculate,
                         contentDescription = "Convertidor",
@@ -261,6 +267,29 @@ fun RateListScreen(
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = null }) {
                     Text("Cancelar")
+                }
+            },
+        )
+    }
+
+    // ── Pro placeholder (sync) ────────────────────────────────────────────────
+    if (showProDialog) {
+        AlertDialog(
+            onDismissRequest = { showProDialog = false },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Star,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            },
+            title = { Text("ViDa Pro") },
+            text = {
+                Text("La sincronización automática de tasas es una funcionalidad premium.")
+            },
+            confirmButton = {
+                TextButton(onClick = { showProDialog = false }) {
+                    Text("Cerrar")
                 }
             },
         )

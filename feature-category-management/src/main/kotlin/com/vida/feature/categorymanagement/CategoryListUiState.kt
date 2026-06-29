@@ -31,6 +31,7 @@ sealed interface CategoryListUiState {
  * @property id Category row id.
  * @property name Display name.
  * @property color ARGB color int for the color dot.
+ * @property icon Material icon resource name (nullable — falls back to a generic glyph).
  * @property isSystem Whether this is a seeded system category.
  * @property isSelectedForDelete Whether the delete confirmation is active (PR #2 wiring).
  */
@@ -38,6 +39,7 @@ data class CategoryDisplayItem(
     val id: Long,
     val name: String,
     val color: Int,
+    val icon: String? = null,
     val isSystem: Boolean,
     val isSelectedForDelete: Boolean = false,
 )
