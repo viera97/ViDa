@@ -69,6 +69,7 @@ dependencies {
     implementation(project(":feature-statistics"))
     implementation(project(":feature-transfer-management"))
     implementation(project(":feature-wallet-management"))
+    implementation(project(":feature-onboarding"))
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
