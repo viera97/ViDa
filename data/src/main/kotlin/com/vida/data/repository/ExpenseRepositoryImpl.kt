@@ -13,6 +13,10 @@ import com.vida.data.mapper.util.toEpochMillis
 import com.vida.domain.model.Expense
 import com.vida.domain.model.ExpenseFilter
 import com.vida.domain.model.SourceType
+import com.vida.domain.model.aggregate.CategoryExpenseTotal
+import com.vida.domain.model.aggregate.CurrencyTotal
+import com.vida.domain.model.aggregate.PeriodCategoryExpenseTotal
+import com.vida.domain.model.aggregate.PeriodExpenseTotal
 import com.vida.domain.repository.ExpenseRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -90,6 +94,28 @@ class ExpenseRepositoryImpl @Inject constructor(
             }
             newId
         }
+
+    // ── Aggregation methods for statistics ─────────────────────────────────
+
+    override suspend fun getExpenseTotalsByCategory(from: Instant, to: Instant): List<CategoryExpenseTotal> =
+        dao.getExpenseTotalsByCategory(from.toEpochMillis(), to.toEpochMillis())
+
+    override suspend fun getExpenseTotalsByPeriod(
+        from: Instant,
+        to: Instant,
+        bucketMillis: Long,
+    ): List<PeriodExpenseTotal> =
+        dao.getExpenseTotalsByPeriod(from.toEpochMillis(), to.toEpochMillis(), bucketMillis)
+
+    override suspend fun getExpenseCategoryTotalsByPeriod(
+        from: Instant,
+        to: Instant,
+        bucketMillis: Long,
+    ): List<PeriodCategoryExpenseTotal> =
+        dao.getExpenseCategoryTotalsByPeriod(from.toEpochMillis(), to.toEpochMillis(), bucketMillis)
+
+    override suspend fun getExpenseTotalsByCurrency(from: Instant, to: Instant): List<CurrencyTotal> =
+        dao.getExpenseTotalsByCurrency(from.toEpochMillis(), to.toEpochMillis())
 
     override suspend fun delete(id: Long) = dao.delete(id)
 
