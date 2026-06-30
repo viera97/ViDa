@@ -22,7 +22,7 @@ object ExpenseMapper {
         val (sourceType, sourceId) = when {
             entity.sourceCardId != null -> SourceType.CARD to entity.sourceCardId
             entity.sourceStashId != null -> SourceType.STASH to entity.sourceStashId
-            entity.sourceWalletId != null -> SourceType.WALLET to null
+            entity.sourceWalletId != null -> SourceType.WALLET to entity.sourceWalletId
             else -> error("ExpenseEntity id=${entity.id} has no source column set")
         }
         val realAmount: Money? = entity.realAmountMinor?.let { minor ->
@@ -46,7 +46,11 @@ object ExpenseMapper {
         val realAmountMinor: Long? = domain.realAmount?.toColumns()?.first
         val realAmountCurrency: String? = domain.realAmount?.toColumns()?.second
         val (sourceWalletId, sourceCardId, sourceStashId) = when (domain.sourceType) {
-            SourceType.WALLET -> Triple(1L, null, null)
+            // WALLET now uses the real wallet id from the form (commit 5742918
+            // refactored wallets into entities with real row ids). Falls back to
+            // null only if the caller passes null (legacy data when wallets
+            // were treated as a singleton).
+            SourceType.WALLET -> Triple(domain.sourceId, null, null)
             SourceType.CARD -> Triple(null, domain.sourceId, null)
             SourceType.STASH -> Triple(null, null, domain.sourceId)
         }

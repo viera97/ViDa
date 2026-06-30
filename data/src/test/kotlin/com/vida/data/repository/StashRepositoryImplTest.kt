@@ -78,24 +78,38 @@ class StashRepositoryImplTest {
     }
 
     @Test
-    fun `getBalance delegates to BalanceDao and converts minor units to Money in CUP`() = runTest {
-        val asOf = Instant.ofEpochMilli(10_000L)
-        every { balanceDao.getStashBalance(1L, asOf.toEpochMilli()) } returns
-            flowOf(CupTotalEntity(20_000L))
+    fun `observeBalance delegates to BalanceDao and converts minor units to Money in CUP`() = runTest {
+        every { balanceDao.getStashBalance(any(), any()) } returns flowOf(CupTotalEntity(20_000L))
 
-        val balance = repository.getBalance(1L, asOf)
-
-        // 20000 minor = 200.00 CUP
-        assertEquals(Money.of("200.00", Currency.CUP), balance)
+        repository.observeBalance(1L).test {
+            // 20000 minor = 200.00 CUP (stash balance is already converted to CUP in SQL)
+            val money = awaitItem()
+            assertEquals(Money.of("200.00", Currency.CUP), money)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test
-    fun `getBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
+    fun `observeBalance returns ZERO_CUP when BalanceDao emits null`() = runTest {
         every { balanceDao.getStashBalance(any(), any()) } returns flowOf(null)
 
-        val balance = repository.getBalance(1L)
+        repository.observeBalance(1L).test {
+            val money = awaitItem()
+            assertEquals(Money.ZERO_CUP, money)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 
-        assertEquals(Money.of("0.00", Currency.CUP), balance)
+    @Test
+    fun `observeBalance falls back to ZERO_CUP when underlying flow throws`() = runTest {
+        every { balanceDao.getStashBalance(any(), any()) } returns
+            kotlinx.coroutines.flow.flow { throw RuntimeException("DB exploded") }
+
+        repository.observeBalance(1L).test {
+            val money = awaitItem()
+            assertEquals(Money.ZERO_CUP, money)
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     private fun aStashEntity() = StashEntity(

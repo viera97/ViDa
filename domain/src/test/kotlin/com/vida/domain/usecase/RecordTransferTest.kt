@@ -24,7 +24,7 @@ class RecordTransferTest {
 
     private fun walletToStash(): Transfer = Transfer(
         fromType = SourceType.WALLET,
-        fromId = null,
+        fromId = 1L,
         toType = SourceType.STASH,
         toId = 5L,
         amount = tenCup,
@@ -77,7 +77,7 @@ class RecordTransferTest {
         assertThrows(IllegalArgumentException::class.java) {
             Transfer(
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.STASH,
                 toId = 5L,
                 amount = Money.ZERO_CUP,
@@ -95,7 +95,7 @@ class RecordTransferTest {
         val newId = RecordTransfer(repo).invoke(
             Transfer(
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.CARD,
                 toId = 3L,
                 amount = oneCup,

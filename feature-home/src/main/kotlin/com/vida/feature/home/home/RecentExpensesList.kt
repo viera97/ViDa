@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,10 +22,17 @@ import com.vida.feature.home.RecentExpenseItem
  * category name, source label + relative date, and right-aligned amount.
  * A divider separates each row.
  * Section header is "Gastos recientes".
+ * When the list is non-empty, a "Ver todos →" link navigates to the
+ * full expense list.
+ *
+ * @param expenses Recent expense items (max 5).
+ * @param onNavigateToExpenseList Callback for "Ver todos →" navigation.
+ * @param modifier Optional modifier for this composable.
  */
 @Composable
 fun RecentExpensesList(
     expenses: List<RecentExpenseItem>,
+    onNavigateToExpenseList: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     if (expenses.isEmpty()) return
@@ -66,6 +74,12 @@ fun RecentExpensesList(
             if (index < expenses.lastIndex) {
                 HorizontalDivider()
             }
+        }
+        TextButton(
+            onClick = onNavigateToExpenseList,
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            Text("Ver todos →")
         }
     }
 }

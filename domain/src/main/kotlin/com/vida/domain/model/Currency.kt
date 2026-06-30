@@ -8,8 +8,9 @@ package com.vida.domain.model
  */
 enum class Currency(val code: String, val symbol: String) {
     CUP("CUP", "$"),
-    USD("USD", "USD"),
-    MLC("MLC", "MLC");
+    USD("USD", "$"),
+    MLC("MLC", "$"),
+    EUR("EUR", "€");
 
     companion object {
         /**

@@ -9,11 +9,10 @@ import com.vida.domain.repository.TransferRepository
  *
  * Validation responsibilities:
  *
- * - **Entity-level invariants** (positive amount, source/destination nullness
- *   rules, no self-transfer) are enforced by [Transfer.init] before the use
- *   case body runs. This use case repeats the cheap checks defensively so the
- *   failure messages stay near the call site if the entity contract is ever
- *   loosened.
+ * - **Entity-level invariants** (positive amount, no self-transfer) are
+ *   enforced by [Transfer.init] before the use case body runs. This use case
+ *   repeats the cheap checks defensively so the failure messages stay near the
+ *   call site if the entity contract is ever loosened.
  * - **Cross-entity atomicity** — that the source's balance decreases and the
  *   destination's balance increases as one transaction — is **NOT** handled
  *   here. It is a `:data` concern: [TransferRepository.upsert] is wrapped in

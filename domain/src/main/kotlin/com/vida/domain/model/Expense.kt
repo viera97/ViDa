@@ -11,7 +11,8 @@ import java.time.Instant
  * - `description` MUST not be blank
  * - `categoryId` MUST be a positive row id (room auto-assigns > 0)
  * - `realAmount`, when present, MUST be in the same currency as `amount` (Q4 locked)
- * - `sourceId` MUST be `null` iff `sourceType == WALLET`; non-null for CARD/STASH (Q-PR1-3)
+ * - `sourceId` MUST be non-null for CARD/STASH; for WALLET it MAY be null (legacy
+ *   singleton representation) or a positive row id (current real-id wallets).
  *
  * Transfers are NOT modeled as expenses with an `isTransfer` flag (Q3 dropped);
  * they live in PR #2b as a first-class `Transfer` entity.
@@ -24,7 +25,9 @@ import java.time.Instant
  * @property description short label, not blank
  * @property dateTime when the expense happened (UTC)
  * @property sourceType which kind of source paid for this
- * @property sourceId FK to the specific Card/Stash row; null only when sourceType is WALLET
+ * @property sourceId FK to the specific Wallet/Card/Stash row; null allowed only for WALLET
+ *                      (legacy singleton); non-null for CARD/STASH and for WALLET after PR #2b
+ *                      refactored wallets into real entities (commit 5742918).
  * @property note optional free-form text
  */
 data class Expense(
@@ -45,8 +48,10 @@ data class Expense(
         require(realAmount == null || realAmount.currency == amount.currency) {
             "Expense realAmount currency (${realAmount?.currency}) must match amount currency (${amount.currency})"
         }
-        require((sourceType == SourceType.WALLET) == (sourceId == null)) {
-            "sourceId must be null when sourceType is WALLET, and non-null for CARD/STASH " +
+        // CARD/STASH always require a non-null sourceId. WALLET may be null (legacy
+        // singleton representation) or a positive row id (real-id wallets).
+        require(sourceType == SourceType.WALLET || sourceId != null) {
+            "sourceId must not be null for CARD/STASH expenses " +
                 "(got sourceType=$sourceType, sourceId=$sourceId)"
         }
     }

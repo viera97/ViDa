@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Money
-import com.vida.feature.home.util.formatMoney
+import com.vida.feature.home.home.formatHomeMoney
 
 /**
  * Headline balance card (R2).
@@ -40,7 +40,7 @@ fun TotalBalanceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Text(
-                text = formatMoney(totalBalance),
+                text = formatHomeMoney(totalBalance),
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
             )

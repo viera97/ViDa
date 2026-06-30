@@ -12,7 +12,7 @@ import androidx.room.PrimaryKey
  * Money is decomposed into two columns ([amountMinor] + [amountCurrency]) by the mapper;
  * there is no single-column TypeConverter for Money. The polymorphic source is stored as
  * three nullable columns — exactly one is non-null per row:
- * - WALLET expense → [sourceWalletId] = 1L (singleton wallet), others null
+ * - WALLET expense → [sourceWalletId] = the wallet row id (commit 5742918), others null
  * - CARD expense   → [sourceCardId] = the card row id, others null
  * - STASH expense  → [sourceStashId] = the stash row id, others null
  *

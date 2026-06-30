@@ -9,9 +9,11 @@ import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.repository.CardRepository
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.time.Instant
+import java.math.BigDecimal
 import javax.inject.Inject
 
 class CardRepositoryImpl @Inject constructor(
@@ -31,9 +33,27 @@ class CardRepositoryImpl @Inject constructor(
 
     override suspend fun delete(id: Long) = dao.delete(id)
 
-    override suspend fun getBalance(id: Long, asOf: Instant): Money {
-        val cupMinor = balanceDao.getCardBalance(id, asOf.toEpochMilli())
-            .first()?.totalCupMinor ?: 0L
-        return Money.fromMinorUnits(cupMinor, Currency.CUP)
-    }
+    /**
+     * Reactive observation of a card's balance. The currency is sourced from the
+     * card row (looked up once per subscription); the minor-unit total comes from
+     * [BalanceDao.getCardBalance], which Room re-invalidates whenever the underlying
+     * `cards`, `transfers`, `expenses`, or `currency_rates` tables change.
+     *
+     * Emits [Money.ZERO_CUP] if the underlying flow throws, so consumers can keep
+     * collecting without breaking the reactive chain (mirrors the pattern in
+     * [com.vida.feature.cardmanagement.CardListViewModel]).
+     */
+    override fun observeBalance(id: Long): Flow<Money> = flow {
+        val currency = dao.getById(id)?.currency ?: Currency.CUP
+        emitAll(
+            balanceDao.getCardBalance(id)
+                .map { entity ->
+                    if (entity != null) {
+                        Money.fromMinorUnits(entity.totalCupMinor, currency)
+                    } else {
+                        Money(BigDecimal.ZERO, currency)
+                    }
+                },
+        )
+    }.catch { emit(Money.ZERO_CUP) }
 }

@@ -13,6 +13,15 @@ android {
     namespace = "com.vida.app"
     compileSdk = 36
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("vida.keystore")
+            storePassword = "newworld"
+            keyAlias = "vida"
+            keyPassword = "newworld"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.vida.app"
         minSdk = 26
@@ -23,7 +32,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -46,12 +56,28 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":data"))
     implementation(project(":feature-home"))
+    implementation(project(":feature-expense"))
+    implementation(project(":feature-expense-list"))
+    implementation(project(":feature-income"))
+    implementation(project(":feature-income-list"))
+    implementation(project(":feature-category-management"))
+    implementation(project(":feature-card-management"))
+    implementation(project(":feature-stash-management"))
+    implementation(project(":feature-recurring-expense-management"))
+    implementation(project(":feature-rate-management"))
+    implementation(project(":feature-reports"))
+    implementation(project(":feature-statistics"))
+    implementation(project(":feature-transfer-management"))
+    implementation(project(":feature-wallet-management"))
+    implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.hilt.android)
+    implementation(libs.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

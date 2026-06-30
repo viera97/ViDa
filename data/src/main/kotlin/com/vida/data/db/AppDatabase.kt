@@ -11,6 +11,7 @@ import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.CategoryDao
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
+import com.vida.data.db.dao.IncomeDao
 import com.vida.data.db.dao.RecurringExpenseDao
 import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
@@ -20,6 +21,7 @@ import com.vida.data.db.entity.CardEntity
 import com.vida.data.db.entity.CategoryEntity
 import com.vida.data.db.entity.CurrencyRateEntity
 import com.vida.data.db.entity.ExpenseEntity
+import com.vida.data.db.entity.IncomeEntity
 import com.vida.data.db.entity.RecurringExpenseEntity
 import com.vida.data.db.entity.RefundEntity
 import com.vida.data.db.entity.StashEntity
@@ -35,12 +37,13 @@ import net.sqlcipher.database.SupportFactory
         WalletEntity::class,
         CategoryEntity::class,
         ExpenseEntity::class,
+        IncomeEntity::class,
         RefundEntity::class,
         CurrencyRateEntity::class,
         TransferEntity::class,
         RecurringExpenseEntity::class,
     ],
-    version = 3,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -50,6 +53,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun walletDao(): WalletDao
     abstract fun categoryDao(): CategoryDao
     abstract fun expenseDao(): ExpenseDao
+    abstract fun incomeDao(): IncomeDao
     abstract fun refundDao(): RefundDao
     abstract fun currencyRateDao(): CurrencyRateDao
     abstract fun transferDao(): TransferDao
@@ -64,7 +68,7 @@ abstract class AppDatabase : RoomDatabase() {
         ): AppDatabase =
             Room.databaseBuilder(ctx, AppDatabase::class.java, "vida.db")
                 .openHelperFactory(SupportFactory(passphraseProvider.getPassphrase()))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
                 .apply { if (callback != null) addCallback(callback) }
                 .build()
     }

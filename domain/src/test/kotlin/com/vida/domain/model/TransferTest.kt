@@ -17,7 +17,7 @@ class TransferTest {
     fun `valid construction succeeds for wallet-to-stash`() {
         val t = Transfer(
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.STASH,
             toId = 5L,
             amount = tenCup,
@@ -25,7 +25,7 @@ class TransferTest {
         )
         assertEquals(0L, t.id)
         assertEquals(null, t.note)
-        assertEquals(null, t.fromId)
+        assertEquals(1L, t.fromId)
         assertEquals(5L, t.toId)
     }
 
@@ -50,7 +50,7 @@ class TransferTest {
         assertThrows(IllegalArgumentException::class.java) {
             Transfer(
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.STASH,
                 toId = 5L,
                 amount = Money.ZERO_CUP,
@@ -60,93 +60,10 @@ class TransferTest {
         assertThrows(IllegalArgumentException::class.java) {
             Transfer(
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.STASH,
                 toId = 5L,
                 amount = Money(BigDecimal("-1"), Currency.CUP),
-                dateTime = now,
-            )
-        }
-    }
-
-    @Test
-    fun `WALLET source with non-null sourceId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Transfer(
-                fromType = SourceType.WALLET,
-                fromId = 5L,
-                toType = SourceType.STASH,
-                toId = 7L,
-                amount = oneCup,
-                dateTime = now,
-            )
-        }
-    }
-
-    @Test
-    fun `CARD source with null sourceId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Transfer(
-                fromType = SourceType.CARD,
-                fromId = null,
-                toType = SourceType.STASH,
-                toId = 7L,
-                amount = oneCup,
-                dateTime = now,
-            )
-        }
-    }
-
-    @Test
-    fun `STASH source with null sourceId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Transfer(
-                fromType = SourceType.STASH,
-                fromId = null,
-                toType = SourceType.WALLET,
-                toId = null,
-                amount = oneCup,
-                dateTime = now,
-            )
-        }
-    }
-
-    @Test
-    fun `WALLET destination with null toId is accepted`() {
-        val t = Transfer(
-            fromType = SourceType.STASH,
-            fromId = 3L,
-            toType = SourceType.WALLET,
-            toId = null,
-            amount = oneCup,
-            dateTime = now,
-        )
-        assertEquals(null, t.toId)
-    }
-
-    @Test
-    fun `CARD destination with null toId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Transfer(
-                fromType = SourceType.WALLET,
-                fromId = null,
-                toType = SourceType.CARD,
-                toId = null,
-                amount = oneCup,
-                dateTime = now,
-            )
-        }
-    }
-
-    @Test
-    fun `STASH destination with null toId is rejected`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            Transfer(
-                fromType = SourceType.WALLET,
-                fromId = null,
-                toType = SourceType.STASH,
-                toId = null,
-                amount = oneCup,
                 dateTime = now,
             )
         }
@@ -165,13 +82,13 @@ class TransferTest {
                 dateTime = now,
             )
         }
-        // wallet → wallet
+        // wallet 1 → wallet 1
         assertThrows(IllegalArgumentException::class.java) {
             Transfer(
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.WALLET,
-                toId = null,
+                toId = 1L,
                 amount = oneCup,
                 dateTime = now,
             )

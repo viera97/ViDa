@@ -3,6 +3,7 @@ package com.vida.feature.home.di
 import com.vida.domain.repository.CardRepository
 import com.vida.domain.repository.CurrencyRateRepository
 import com.vida.domain.repository.ExpenseRepository
+import com.vida.domain.repository.IncomeRepository
 import com.vida.domain.repository.StashRepository
 import com.vida.domain.repository.WalletRepository
 import com.vida.domain.usecase.ConvertCurrency
@@ -10,6 +11,7 @@ import com.vida.domain.usecase.balance.GetTotalBalance
 import com.vida.domain.usecase.card.GetCardBalance
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.expense.ListExpenses
+import com.vida.domain.usecase.income.ListIncomes
 import com.vida.domain.usecase.rate.GetCurrentRate
 import com.vida.domain.usecase.stash.GetStashBalance
 import com.vida.domain.usecase.stash.ListStashes
@@ -38,6 +40,10 @@ object HomeModule {
     @Provides
     fun provideListExpenses(repo: ExpenseRepository): ListExpenses =
         ListExpenses(repo)
+
+    @Provides
+    fun provideListIncomes(repo: IncomeRepository): ListIncomes =
+        ListIncomes(repo)
 
     @Provides
     fun provideListCards(repo: CardRepository): ListCards =

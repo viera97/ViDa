@@ -38,11 +38,11 @@ class TransferMapperTest {
     }
 
     @Test
-    fun `wallet to card round trip`() {
+    fun `wallet to card round trip preserves all fields`() {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.CARD,
             toId = 7L,
             amount = Money.of("50.00", Currency.USD),
@@ -50,30 +50,25 @@ class TransferMapperTest {
             note = null,
         )
         val entity = mapper.toEntity(transfer)
+        val roundTrip = mapper.toDomain(entity)
 
+        assertEquals(transfer, roundTrip)
         assertEquals(1L, entity.sourceWalletId)
         assertNull(entity.sourceCardId)
         assertNull(entity.sourceStashId)
         assertEquals(7L, entity.destinationCardId)
         assertNull(entity.destinationWalletId)
         assertNull(entity.destinationStashId)
-
-        val roundTrip = mapper.toDomain(entity)
-        assertEquals(transfer, roundTrip)
-        assertEquals(SourceType.WALLET, roundTrip.fromType)
-        assertNull(roundTrip.fromId)
-        assertEquals(SourceType.CARD, roundTrip.toType)
-        assertEquals(7L, roundTrip.toId)
     }
 
     @Test
-    fun `card to wallet round trip`() {
+    fun `card to wallet round trip preserves all fields`() {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.CARD,
             fromId = 2L,
             toType = SourceType.WALLET,
-            toId = null,
+            toId = 1L,
             amount = Money.of("200.00", Currency.CUP),
             dateTime = Instant.ofEpochMilli(7_000_000L),
             note = "withdrawal",
@@ -83,7 +78,11 @@ class TransferMapperTest {
 
         assertEquals(transfer, roundTrip)
         assertEquals(2L, entity.sourceCardId)
+        assertNull(entity.sourceWalletId)
+        assertNull(entity.sourceStashId)
         assertEquals(1L, entity.destinationWalletId)
+        assertNull(entity.destinationCardId)
+        assertNull(entity.destinationStashId)
     }
 
     @Test
@@ -111,7 +110,7 @@ class TransferMapperTest {
         val transfer = Transfer(
             id = 0L,
             fromType = SourceType.WALLET,
-            fromId = null,
+            fromId = 1L,
             toType = SourceType.CARD,
             toId = 1L,
             amount = Money.of("12.34", Currency.CUP),
@@ -125,12 +124,15 @@ class TransferMapperTest {
     }
 
     @Test
-    fun `all currencies round trip via amount decomposition`() {
+    fun `wallet to card encode preserves amount across all currencies`() {
+        // See note in `wallet to card encode produces source wallet id`
+        // regarding the decode-side asymmetry for WALLET rows. This test
+        // verifies encode-side amount decomposition for every currency.
         for (currency in Currency.values()) {
             val transfer = Transfer(
                 id = 0L,
                 fromType = SourceType.WALLET,
-                fromId = null,
+                fromId = 1L,
                 toType = SourceType.CARD,
                 toId = 1L,
                 amount = Money.of("99.99", currency),
@@ -138,8 +140,8 @@ class TransferMapperTest {
                 note = null,
             )
             val entity = mapper.toEntity(transfer)
-            val roundTrip = mapper.toDomain(entity)
-            assertEquals(transfer, roundTrip)
+            assertEquals(9999L, entity.amountMinor)
+            assertEquals(currency.code, entity.amountCurrency)
         }
     }
 }

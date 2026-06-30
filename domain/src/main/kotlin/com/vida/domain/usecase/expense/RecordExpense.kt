@@ -20,11 +20,7 @@ import com.vida.domain.repository.WalletRepository
  * - the referenced [com.vida.domain.model.Category] exists
  *   (`CategoryRepository.getById`)
  * - the referenced source exists (`CardRepository.getById` /
- *   `StashRepository.getById` / `WalletRepository.get()`)
- *
- * The wallet source is assumed to be seeded at app init (it is a singleton,
- * Q1 locked) — [WalletRepository.get] throws if it is not, which is the
- * correct failure mode.
+ *   `StashRepository.getById` / `WalletRepository.getById()`)
  *
  * **Balance gating is intentionally NOT performed here** (Q-PR2b-2 closed):
  * balances are computed at read time (Q7), so an expense may be recorded even
@@ -53,8 +49,10 @@ class RecordExpense(
 
         when (expense.sourceType) {
             SourceType.WALLET -> {
-                // Singleton: walletRepo.get() throws if not seeded. That's the correct signal.
-                walletRepo.get()
+                require(expense.sourceId != null) { "Wallet expense requires non-null sourceId" }
+                if (walletRepo.getById(expense.sourceId) == null) {
+                    throw NoSuchElementException("Wallet ${expense.sourceId} not found")
+                }
             }
             SourceType.CARD -> {
                 require(expense.sourceId != null) { "Card expense requires non-null sourceId" }

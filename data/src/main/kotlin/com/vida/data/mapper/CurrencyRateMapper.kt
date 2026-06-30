@@ -20,6 +20,7 @@ object CurrencyRateMapper {
         toCurrency = entity.toCurrency,
         rate = BigDecimal.valueOf(entity.rate),
         updatedAt = entity.effectiveDate.toInstant(),
+        provider = entity.provider,
     )
 
     fun toEntity(domain: CurrencyRate): CurrencyRateEntity = CurrencyRateEntity(
@@ -28,5 +29,6 @@ object CurrencyRateMapper {
         toCurrency = domain.toCurrency,
         rate = domain.rate.toDouble(),
         effectiveDate = domain.updatedAt.toEpochMillis(),
+        provider = domain.provider,
     )
 }

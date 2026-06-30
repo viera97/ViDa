@@ -8,6 +8,7 @@ import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.CategoryDao
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
+import com.vida.data.db.dao.IncomeDao
 import com.vida.data.db.dao.RecurringExpenseDao
 import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
@@ -17,6 +18,7 @@ import com.vida.data.mapper.CardMapper
 import com.vida.data.mapper.CategoryMapper
 import com.vida.data.mapper.CurrencyRateMapper
 import com.vida.data.mapper.ExpenseMapper
+import com.vida.data.mapper.IncomeMapper
 import com.vida.data.mapper.RecurringExpenseMapper
 import com.vida.data.mapper.RefundMapper
 import com.vida.data.mapper.StashMapper
@@ -70,6 +72,9 @@ object DatabaseModule {
     fun provideExpenseDao(db: AppDatabase): ExpenseDao = db.expenseDao()
 
     @Provides
+    fun provideIncomeDao(db: AppDatabase): IncomeDao = db.incomeDao()
+
+    @Provides
     fun provideRefundDao(db: AppDatabase): RefundDao = db.refundDao()
 
     @Provides
@@ -110,6 +115,9 @@ object DatabaseModule {
 
     @Provides
     fun provideExpenseMapper(): ExpenseMapper = ExpenseMapper
+
+    @Provides
+    fun provideIncomeMapper(): IncomeMapper = IncomeMapper
 
     @Provides
     fun provideRefundMapper(): RefundMapper = RefundMapper

@@ -5,6 +5,7 @@ import com.vida.domain.model.Card
 import com.vida.domain.model.CardNumber
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Money
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.LocalDate
@@ -21,6 +22,7 @@ class CardMapperTest {
             currency = Currency.CUP,
             note = "Main card",
             expirationDate = LocalDate.of(2028, 12, 31),
+            balance = Money.of("0.00", Currency.CUP),
         )
         val entity = mapper.toEntity(card)
         val roundTrip = mapper.toDomain(entity)
@@ -36,6 +38,7 @@ class CardMapperTest {
             currency = Currency.USD,
             note = null,
             expirationDate = LocalDate.of(2029, 6, 15),
+            balance = Money.of("100.00", Currency.USD),
         )
         val entity = mapper.toEntity(card)
         val roundTrip = mapper.toDomain(entity)
@@ -52,6 +55,7 @@ class CardMapperTest {
                 currency = Currency.MLC,
                 note = null,
                 expirationDate = LocalDate.of(2030, 1, 1),
+                balance = Money.of("0.00", Currency.MLC),
             )
             val entity = mapper.toEntity(card)
             val roundTrip = mapper.toDomain(entity)
@@ -69,6 +73,7 @@ class CardMapperTest {
                 currency = currency,
                 note = "Holds $currency",
                 expirationDate = LocalDate.of(2027, 3, 15),
+                balance = Money.of("0.00", currency),
             )
             val entity = mapper.toEntity(card)
             val roundTrip = mapper.toDomain(entity)

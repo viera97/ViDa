@@ -2,13 +2,20 @@ package com.vida.domain.usecase.wallet
 
 import com.vida.domain.model.Money
 import com.vida.domain.repository.WalletRepository
-import java.time.Instant
+import kotlinx.coroutines.flow.Flow
 
 /**
- * Computes the wallet balance. Real implementation lives in :data as a Room
- * SUM query (expenses + transfers affecting the wallet). The repo throws
- * NotImplementedError in PR #1 because no Room impl exists yet.
+ * Observes the balance of the wallet identified by [id].
+ *
+ * The returned [Flow] is reactive — Room invalidates the underlying query
+ * whenever the `wallets`, `transfers`, `expenses`, or `currency_rates` tables
+ * change, so consumers (typically ViewModels) automatically re-render after a
+ * transfer, expense, or mutation made elsewhere in the app.
+ *
+ * Real implementation lives in `:data` as a Room SUM query (expenses +
+ * transfers affecting the wallet), wrapped behind
+ * [WalletRepository.observeBalance].
  */
 class GetWalletBalance(private val repo: WalletRepository) {
-    suspend operator fun invoke(asOf: Instant = Instant.now()): Money = repo.getBalance(asOf)
+    operator fun invoke(id: Long): Flow<Money> = repo.observeBalance(id)
 }

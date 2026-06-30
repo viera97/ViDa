@@ -12,7 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
-import com.vida.feature.home.util.formatMoney
+import com.vida.feature.home.home.formatHomeMoney
 
 /**
  * Per-currency subtotals row (R3).
@@ -37,7 +37,7 @@ fun PerCurrencySubtotals(
     ) {
         subtotals.forEach { (_, money) ->
             Text(
-                text = formatMoney(money),
+                text = formatHomeMoney(money),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.primary,
             )

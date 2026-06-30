@@ -13,7 +13,8 @@ import java.time.LocalDate
  * - `description` MUST not be blank
  * - `categoryId` MUST be a positive row id
  * - `endDate` (when set) MUST be on or after `startDate`
- * - `sourceId` MUST be `null` iff `sourceType == WALLET`
+ * - `sourceId` MUST be non-null for CARD/STASH; for WALLET it MAY be null (legacy
+ *   singleton representation) or a positive row id (current real-id wallets).
  *
  * `currency` is the source's currency (mirrors the related `Expense.amount.currency`).
  *
@@ -22,7 +23,9 @@ import java.time.LocalDate
  * @property currency source's currency
  * @property categoryId FK → Category.id (same category every occurrence)
  * @property sourceType which kind of source pays
- * @property sourceId FK to the specific Card/Stash row; null only when sourceType is WALLET
+ * @property sourceId FK to the specific Wallet/Card/Stash row; null allowed only for WALLET
+ *                      (legacy singleton); non-null for CARD/STASH and for WALLET after PR #2b
+ *                      refactored wallets into real entities (commit 5742918).
  * @property description short label, not blank
  * @property frequency DAILY/WEEKLY/MONTHLY/YEARLY cadence
  * @property startDate first eligible generation date
@@ -52,8 +55,10 @@ data class RecurringExpense(
             "endDate must be on or after startDate " +
                 "(got startDate=$startDate, endDate=$endDate)"
         }
-        require((sourceType == SourceType.WALLET) == (sourceId == null)) {
-            "sourceId must be null when sourceType is WALLET, and non-null for CARD/STASH " +
+        // CARD/STASH always require a non-null sourceId. WALLET may be null (legacy
+        // singleton representation) or a positive row id (real-id wallets).
+        require(sourceType == SourceType.WALLET || sourceId != null) {
+            "sourceId must not be null for CARD/STASH recurring expenses " +
                 "(got sourceType=$sourceType, sourceId=$sourceId)"
         }
     }

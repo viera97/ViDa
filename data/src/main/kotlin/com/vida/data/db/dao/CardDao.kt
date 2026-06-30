@@ -19,4 +19,14 @@ interface CardDao {
 
     @Query("DELETE FROM cards WHERE id = :id")
     suspend fun delete(id: Long)
+
+    /**
+     * Atomically applies [delta] (positive or negative, in minor units) to the stored
+     * `balance_minor` column of the card row identified by [id]. Used by
+     * `TransferOrchestrator` and `ExpenseRepositoryImpl` to keep the displayed balance
+     * in sync with movement events (Option C — ledger semantics). Negative deltas
+     * reduce the balance; positive deltas increase it. No-op if no row matches [id].
+     */
+    @Query("UPDATE cards SET balance_minor = balance_minor + :delta WHERE id = :id")
+    suspend fun adjustBalance(id: Long, delta: Long)
 }

@@ -63,7 +63,7 @@ class AppDatabaseCallbackTest {
 
         // Touch the DB to force onCreate
         database.walletDao().upsert(WalletEntity(id = 1L, currency = Currency.CUP))
-        val wallet = database.walletDao().get()
+        val wallet = database.walletDao().getById(1L)
         assertEquals(1L, wallet!!.id)
     }
 

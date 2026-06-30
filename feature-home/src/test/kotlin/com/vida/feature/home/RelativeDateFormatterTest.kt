@@ -1,6 +1,6 @@
 package com.vida.feature.home
 
-import com.vida.feature.home.util.toRelativeDateString
+import com.vida.core.format.toRelativeDateString
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Clock

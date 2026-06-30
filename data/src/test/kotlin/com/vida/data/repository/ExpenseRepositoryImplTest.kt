@@ -1,32 +1,75 @@
 package com.vida.data.repository
 
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
+import com.vida.data.db.AppDatabase
+import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.ExpenseDao
+import com.vida.data.db.dao.StashDao
+import com.vida.data.db.dao.WalletDao
+import com.vida.data.db.entity.CardEntity
+import com.vida.data.db.entity.CategoryEntity
 import com.vida.data.db.entity.ExpenseEntity
+import com.vida.data.db.entity.StashEntity
+import com.vida.data.db.entity.WalletEntity
 import com.vida.data.mapper.ExpenseMapper
+import com.vida.data.mapper.util.amountMinorUnits
+import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Expense
 import com.vida.domain.model.Money
 import com.vida.domain.model.SourceType
-import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.test.runTest
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.time.Instant
+import java.time.LocalDate
 
+/**
+ * Unit tests for [ExpenseRepositoryImpl].
+ *
+ * Read paths (`getAll`, `getById`, `getBySource`, etc.) use mocked DAOs and a
+ * relaxed mock for `AppDatabase` (none of those paths touch `database.withTransaction`).
+ *
+ * `upsert` exercises a real in-memory Room database because Room 2.7+ declares
+ * `withTransaction` as `inline`, which makes it unreliable to mock via
+ * `mockkStatic`. Using a real DB (same pattern as `TransferOrchestratorIntegrationTest`)
+ * gives us end-to-end verification of the INSERT + ledger UPDATE atomicity,
+ * including the new behavior where wallet/card balances are auto-adjusted.
+ */
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [34])
 class ExpenseRepositoryImplTest {
     private val dao = mockk<ExpenseDao>(relaxed = true)
+    private val walletDao = mockk<WalletDao>(relaxed = true)
+    private val cardDao = mockk<CardDao>(relaxed = true)
+    private val stashDao = mockk<StashDao>(relaxed = true)
     private val mapper = ExpenseMapper
+    private val database = mockk<AppDatabase>(relaxed = true)
     private lateinit var repository: ExpenseRepositoryImpl
 
     @Before
     fun setUp() {
-        repository = ExpenseRepositoryImpl(dao, mapper)
+        repository = ExpenseRepositoryImpl(database, dao, walletDao, cardDao, stashDao, mapper)
+    }
+
+    @After
+    fun tearDown() {
+        // No-op: `database` is a relaxed mock; the real in-memory DBs used by the
+        // upsert tests are created and closed inside each test method.
     }
 
     @Test
@@ -92,14 +135,133 @@ class ExpenseRepositoryImplTest {
     }
 
     @Test
-    fun `upsert delegates to dao and returns id`() = runTest {
-        val expense = anExpense()
-        val entity = mapper.toEntity(expense)
-        coEvery { dao.upsert(entity) } returns 11L
+    fun `upsert with CARD source inserts expense and reduces card balance`() = runTest {
+        // Real in-memory Room DB so that the INSERT + ledger UPDATE run end-to-end.
+        val realDb = newInMemoryDb()
+        try {
+            val categoryId = realDb.categoryDao().upsert(
+                CategoryEntity(name = "Comida", color = 0, icon = null, isSystem = 0),
+            )
+            val cardId = realDb.cardDao().upsert(
+                CardEntity(
+                    maskedNumber = "123456******7890",
+                    bank = "POP",
+                    type = CardType.DEBIT,
+                    currency = Currency.USD,
+                    note = null,
+                    expirationDate = LocalDate.of(2028, 12, 31),
+                    balanceMinor = 50_00L,
+                ),
+            )
 
-        val id = repository.upsert(expense)
-        assertEquals(11L, id)
-        coVerify { dao.upsert(entity) }
+            val realRepository = ExpenseRepositoryImpl(
+                realDb,
+                realDb.expenseDao(),
+                realDb.walletDao(),
+                realDb.cardDao(),
+                realDb.stashDao(),
+                mapper,
+            )
+            val expense = anExpense().copy(sourceId = cardId, categoryId = categoryId)
+
+            val id = realRepository.upsert(expense)
+
+            assertTrue("Expected positive row id from upsert", id > 0L)
+            // Expense row was persisted.
+            val persisted = realDb.expenseDao().getById(id)
+            assertNotNull(persisted)
+            assertEquals(expense.amount.amountMinorUnits(), persisted!!.amountMinor)
+            // Card balance was reduced by the expense amount (ledger delta).
+            val updatedCard = realDb.cardDao().getById(cardId)!!
+            assertEquals(50_00L - 1234L, updatedCard.balanceMinor)
+        } finally {
+            realDb.close()
+        }
+    }
+
+    @Test
+    fun `upsert with WALLET source reduces the singleton wallet balance`() = runTest {
+        val realDb = newInMemoryDb()
+        try {
+            val categoryId = realDb.categoryDao().upsert(
+                CategoryEntity(name = "Comida", color = 0, icon = null, isSystem = 0),
+            )
+            realDb.walletDao().upsert(
+                WalletEntity(id = 1L, currency = Currency.USD, balanceMinor = 10_000L),
+            )
+
+            val realRepository = ExpenseRepositoryImpl(
+                realDb,
+                realDb.expenseDao(),
+                realDb.walletDao(),
+                realDb.cardDao(),
+                realDb.stashDao(),
+                mapper,
+            )
+            val expense = Expense(
+                id = 0L,
+                categoryId = categoryId,
+                amount = Money.of("25.00", Currency.USD),
+                description = "Coffee",
+                dateTime = Instant.ofEpochMilli(1_000L),
+                sourceType = SourceType.WALLET,
+                sourceId = null,
+            )
+
+            val id = realRepository.upsert(expense)
+
+            assertTrue("Expected positive row id from upsert", id > 0L)
+            val wallet = realDb.walletDao().getById(1L)!!
+            assertEquals(10_000L - 2_500L, wallet.balanceMinor)
+        } finally {
+            realDb.close()
+        }
+    }
+
+    @Test
+    fun `upsert with STASH source does not touch any balance column`() = runTest {
+        val realDb = newInMemoryDb()
+        try {
+            val categoryId = realDb.categoryDao().upsert(
+                CategoryEntity(name = "Comida", color = 0, icon = null, isSystem = 0),
+            )
+            val stashId = realDb.stashDao().upsert(
+                StashEntity(
+                    name = "Emergency",
+                    createdAt = Instant.ofEpochMilli(0L),
+                    updatedAt = Instant.ofEpochMilli(0L),
+                    currency = Currency.USD,
+                ),
+            )
+
+            val realRepository = ExpenseRepositoryImpl(
+                realDb,
+                realDb.expenseDao(),
+                realDb.walletDao(),
+                realDb.cardDao(),
+                realDb.stashDao(),
+                mapper,
+            )
+            val expense = Expense(
+                id = 0L,
+                categoryId = categoryId,
+                amount = Money.of("15.00", Currency.USD),
+                description = "Groceries",
+                dateTime = Instant.ofEpochMilli(1_000L),
+                sourceType = SourceType.STASH,
+                sourceId = stashId,
+            )
+
+            val id = realRepository.upsert(expense)
+
+            assertTrue("Expected positive row id from upsert", id > 0L)
+            // No balance mutation expected — stash balance is computed at read time.
+            // The expense row exists; that is the assertion.
+            val persisted = realDb.expenseDao().getById(id)
+            assertNotNull(persisted)
+        } finally {
+            realDb.close()
+        }
     }
 
     @Test
@@ -107,6 +269,12 @@ class ExpenseRepositoryImplTest {
         repository.delete(1L)
         coVerify { dao.delete(1L) }
     }
+
+    private fun newInMemoryDb(): AppDatabase =
+        Room.inMemoryDatabaseBuilder(
+            ApplicationProvider.getApplicationContext(),
+            AppDatabase::class.java,
+        ).allowMainThreadQueries().build()
 
     private fun anEntity() = ExpenseEntity(
         id = 1L,

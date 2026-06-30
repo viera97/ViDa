@@ -27,7 +27,7 @@ object RecurringExpenseMapper {
         val (sourceType, sourceId) = when {
             entity.sourceCardId != null -> SourceType.CARD to entity.sourceCardId
             entity.sourceStashId != null -> SourceType.STASH to entity.sourceStashId
-            entity.sourceWalletId != null -> SourceType.WALLET to null
+            entity.sourceWalletId != null -> SourceType.WALLET to entity.sourceWalletId
             else -> error("RecurringExpenseEntity id=${entity.id} has no source column set")
         }
         val amount = (entity.amountMinor to entity.amountCurrency).toMoney()
@@ -50,7 +50,10 @@ object RecurringExpenseMapper {
     fun toEntity(domain: RecurringExpense): RecurringExpenseEntity {
         val (amountMinor, amountCurrency) = domain.amount.toColumns()
         val (sourceWalletId, sourceCardId, sourceStashId) = when (domain.sourceType) {
-            SourceType.WALLET -> Triple(1L, null, null)
+            // WALLET uses the real wallet id from the form (commit 5742918
+            // refactored wallets into entities with real row ids). Falls back to
+            // null only for legacy data.
+            SourceType.WALLET -> Triple(domain.sourceId, null, null)
             SourceType.CARD -> Triple(null, domain.sourceId, null)
             SourceType.STASH -> Triple(null, null, domain.sourceId)
         }

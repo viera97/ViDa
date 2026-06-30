@@ -1,17 +1,17 @@
 package com.vida.domain.model
 
 /**
- * The singleton Wallet — the user's primary cash pool in a single currency.
+ * A user-managed cash pool in a single currency.
  *
- * v1 commits to a singleton (Q1 locked). Only one [Wallet] row exists at any time.
- * The default [id] of `1L` is the reserved singleton identifier; the [init] block
- * rejects any other value so the invariant is enforced at construction.
+ * v2 supports multiple wallets via AUTOINCREMENT PK. Each wallet stores its own
+ * [balance] in [currency] — the user maintains it manually via the edit dialog.
+ * Transfers and expenses still record normally but do NOT auto-update [balance]
+ * (Option B in the balance-tracking decision); see
+ * [com.vida.data.db.dao.BalanceDao] for the read-side SQL.
  */
 data class Wallet(
-    val id: Long = 1L,
+    val id: Long = 0L,
     val currency: Currency,
-) {
-    init {
-        require(id == 1L) { "Wallet is a singleton; id must be 1" }
-    }
-}
+    val name: String = "Billetera",
+    val balance: Money = Money.ZERO_CUP,
+)
