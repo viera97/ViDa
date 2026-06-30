@@ -13,6 +13,7 @@ import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
 import com.vida.data.db.dao.IncomeDao
 import com.vida.data.db.dao.RecurringExpenseDao
+import com.vida.data.db.dao.RecurringIncomeDao
 import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
 import com.vida.data.db.dao.TransferDao
@@ -23,12 +24,13 @@ import com.vida.data.db.entity.CurrencyRateEntity
 import com.vida.data.db.entity.ExpenseEntity
 import com.vida.data.db.entity.IncomeEntity
 import com.vida.data.db.entity.RecurringExpenseEntity
+import com.vida.data.db.entity.RecurringIncomeEntity
 import com.vida.data.db.entity.RefundEntity
 import com.vida.data.db.entity.StashEntity
 import com.vida.data.db.entity.TransferEntity
 import com.vida.data.db.entity.WalletEntity
 import com.vida.data.security.PassphraseProvider
-import net.sqlcipher.database.SupportFactory
+import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [
@@ -42,8 +44,9 @@ import net.sqlcipher.database.SupportFactory
         CurrencyRateEntity::class,
         TransferEntity::class,
         RecurringExpenseEntity::class,
+        RecurringIncomeEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -58,6 +61,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun currencyRateDao(): CurrencyRateDao
     abstract fun transferDao(): TransferDao
     abstract fun recurringExpenseDao(): RecurringExpenseDao
+    abstract fun recurringIncomeDao(): RecurringIncomeDao
     abstract fun balanceDao(): BalanceDao
 
     companion object {
@@ -67,8 +71,8 @@ abstract class AppDatabase : RoomDatabase() {
             callback: AppDatabaseCallback? = null,
         ): AppDatabase =
             Room.databaseBuilder(ctx, AppDatabase::class.java, "vida.db")
-                .openHelperFactory(SupportFactory(passphraseProvider.getPassphrase()))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9)
+                .openHelperFactory(SupportOpenHelperFactory(passphraseProvider.getPassphrase()))
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
                 .apply { if (callback != null) addCallback(callback) }
                 .build()
     }

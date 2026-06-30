@@ -6,6 +6,7 @@ import com.vida.data.repository.CurrencyRateRepositoryImpl
 import com.vida.data.repository.ExpenseRepositoryImpl
 import com.vida.data.repository.IncomeRepositoryImpl
 import com.vida.data.repository.RecurringExpenseRepositoryImpl
+import com.vida.data.repository.RecurringIncomeRepositoryImpl
 import com.vida.data.repository.RefundRepositoryImpl
 import com.vida.data.repository.StashRepositoryImpl
 import com.vida.data.repository.TransferRepositoryImpl
@@ -16,6 +17,7 @@ import com.vida.domain.repository.CurrencyRateRepository
 import com.vida.domain.repository.ExpenseRepository
 import com.vida.domain.repository.IncomeRepository
 import com.vida.domain.repository.RecurringExpenseRepository
+import com.vida.domain.repository.RecurringIncomeRepository
 import com.vida.domain.repository.RefundRepository
 import com.vida.domain.repository.StashRepository
 import com.vida.domain.repository.TransferRepository
@@ -39,4 +41,7 @@ abstract class RepositoryModule {
     @Binds abstract fun bindTransferRepository(impl: TransferRepositoryImpl): TransferRepository
     @Binds
     abstract fun bindRecurringExpenseRepository(impl: RecurringExpenseRepositoryImpl): RecurringExpenseRepository
+
+    @Binds
+    abstract fun bindRecurringIncomeRepository(impl: RecurringIncomeRepositoryImpl): RecurringIncomeRepository
 }

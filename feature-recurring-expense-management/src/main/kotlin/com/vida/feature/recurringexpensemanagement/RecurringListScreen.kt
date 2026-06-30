@@ -13,14 +13,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -37,22 +36,21 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vida.domain.model.RecurringExpense
+import com.vida.domain.model.RecurringIncome
 
 /**
- * Root composable for the recurring expense management screen.
+ * Root composable for the recurring expense/income management screen.
  *
  * Layout (top to bottom):
- * - TopAppBar ("Gastos Recurrentes") with back button
+ * - TopAppBar ("Recurrentes") with back button
  * - Content area: [LazyColumn] when [RecurringListUiState.Ready],
  *   centered message for [RecurringListUiState.Empty],
  *   error message + retry for [RecurringListUiState.Error],
  *   spinner for [RecurringListUiState.Loading]
- * - FAB ("+") → emits add dialog request via ViewModel
+ * - FAB cluster: secondary (income, TrendingUp) on top, primary (expense, TrendingDown) below
  *
  * Dialog management is owned by this composable via [mutableStateOf];
  * the ViewModel exposes [RecurringListViewModel.navEvents] for feedback.
- *
- * PR #2: form dialog (add/edit) wired. PR #3 will add generate flow.
  *
  * @param onNavigateBack Back navigation via toolbar arrow.
  * @param viewModel Injected via Hilt.
@@ -68,24 +66,25 @@ fun RecurringListScreen(
     val categories by viewModel.categories.collectAsStateWithLifecycle()
     val cards by viewModel.cards.collectAsStateWithLifecycle()
     val stashes by viewModel.stashes.collectAsStateWithLifecycle()
-    val snackbarHostState = remember { SnackbarHostState() }
-
+    val wallets by viewModel.wallets.collectAsStateWithLifecycle()
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntity by remember { mutableStateOf<RecurringExpense?>(null) }
+    var showAddIncomeDialog by remember { mutableStateOf(false) }
+    var editingIncomeEntity by remember { mutableStateOf<RecurringIncome?>(null) }
     var showDeleteConfirm by remember { mutableStateOf<RecurringDisplayItem?>(null) }
 
     // Observe one-shot navigation events.
     LaunchedEffect(Unit) {
         viewModel.navEvents.collect { event ->
             when (event) {
-                is RecurringNavEvent.ShowToast -> {
-                    snackbarHostState.showSnackbar(event.message)
-                }
+                is RecurringNavEvent.ShowToast -> { /* snackbar eliminado */ }
 
                 is RecurringNavEvent.SaveSuccess -> {
                     showAddDialog = false
                     editingEntity = null
+                    showAddIncomeDialog = false
+                    editingIncomeEntity = null
                 }
 
                 is RecurringNavEvent.ShowAddDialog -> {
@@ -99,6 +98,14 @@ fun RecurringListScreen(
                 is RecurringNavEvent.ShowEditDialog -> {
                     editingEntity = event.entity
                 }
+
+                is RecurringNavEvent.ShowAddIncomeDialog -> {
+                    showAddIncomeDialog = true
+                }
+
+                is RecurringNavEvent.ShowIncomeEditDialog -> {
+                    editingIncomeEntity = event.entity
+                }
             }
         }
     }
@@ -106,18 +113,28 @@ fun RecurringListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Gastos Recurrentes") },
+                title = { Text("Recurrentes") },
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.onFabClick() }) {
-                Text(
-                    text = "+",
-                    style = MaterialTheme.typography.headlineSmall,
-                )
+            // FAB cluster — mirrors HomeFab layout: secondary (income) on top,
+            // primary (recurring expense) at the bottom.
+            Column(horizontalAlignment = Alignment.End) {
+                SmallFloatingActionButton(onClick = { viewModel.onIncomeFabClick() }) {
+                    Icon(
+                        imageVector = Icons.Default.TrendingUp,
+                        contentDescription = "Nueva plantilla de ingreso",
+                    )
+                }
+                Spacer(modifier = Modifier.height(12.dp))
+                FloatingActionButton(onClick = { viewModel.onFabClick() }) {
+                    Icon(
+                        imageVector = Icons.Default.TrendingDown,
+                        contentDescription = "Nueva plantilla de gasto",
+                    )
+                }
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -138,15 +155,15 @@ fun RecurringListScreen(
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(
                             items = state.items,
-                            key = { it.id },
+                            key = { "${it.type.name}-${it.id}" },
                         ) { item ->
                             RecurringListItem(
                                 item = item,
                                 onClick = { viewModel.onOpenEditDialog(item) },
                                 onEdit = { viewModel.onOpenEditDialog(item) },
                                 onDelete = { viewModel.onRequestDelete(item) },
-                                onGenerate = { viewModel.onGenerate(item.id) },
-                                onToggleActive = { viewModel.onToggleActive(item.id) },
+                                onGenerate = { viewModel.onGenerate(item) },
+                                onToggleActive = { viewModel.onToggleActive(item) },
                             )
                         }
                     }
@@ -166,7 +183,7 @@ fun RecurringListScreen(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Tocá el botón + para crear tu primera plantilla de gasto recurrente",
+                                text = "Tocá el botón + para crear tu primera plantilla",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
@@ -198,12 +215,13 @@ fun RecurringListScreen(
         }
     }
 
-    // ── Add dialog ────────────────────────────────────────────────────────────
+    // ── Add expense dialog ────────────────────────────────────────────────────
     if (showAddDialog) {
         RecurringFormDialog(
             isEdit = false,
             isSaving = isSaving,
             categories = categories,
+            wallets = wallets,
             cards = cards,
             stashes = stashes,
             onDismiss = { showAddDialog = false },
@@ -211,7 +229,7 @@ fun RecurringListScreen(
         )
     }
 
-    // ── Edit dialog ───────────────────────────────────────────────────────────
+    // ── Edit expense dialog ───────────────────────────────────────────────────
     editingEntity?.let { entity ->
         RecurringFormDialog(
             initialAmount = entity.amount.amount.toPlainString(),
@@ -227,6 +245,7 @@ fun RecurringListScreen(
             isEdit = true,
             isSaving = isSaving,
             categories = categories,
+            wallets = wallets,
             cards = cards,
             stashes = stashes,
             onDismiss = { editingEntity = null },
@@ -248,6 +267,54 @@ fun RecurringListScreen(
         )
     }
 
+    // ── Add income dialog ─────────────────────────────────────────────────────
+    if (showAddIncomeDialog) {
+        RecurringIncomeFormDialog(
+            isEdit = false,
+            isSaving = isSaving,
+            wallets = wallets,
+            cards = cards,
+            stashes = stashes,
+            onDismiss = { showAddIncomeDialog = false },
+            onSave = { income -> viewModel.onAddIncome(income) },
+        )
+    }
+
+    // ── Edit income dialog ────────────────────────────────────────────────────
+    editingIncomeEntity?.let { entity ->
+        RecurringIncomeFormDialog(
+            initialAmount = entity.amount.amount.toPlainString(),
+            initialCurrency = entity.currency,
+            initialSourceType = entity.sourceType,
+            initialSourceId = entity.sourceId,
+            initialDescription = entity.description,
+            initialFrequency = entity.frequency,
+            initialStartDate = entity.startDate,
+            initialEndDate = entity.endDate,
+            initialIsActive = entity.isActive,
+            isEdit = true,
+            isSaving = isSaving,
+            wallets = wallets,
+            cards = cards,
+            stashes = stashes,
+            onDismiss = { editingIncomeEntity = null },
+            onSave = { formIncome ->
+                val merged = entity.copy(
+                    amount = formIncome.amount,
+                    currency = formIncome.currency,
+                    sourceType = formIncome.sourceType,
+                    sourceId = formIncome.sourceId,
+                    description = formIncome.description,
+                    frequency = formIncome.frequency,
+                    startDate = formIncome.startDate,
+                    endDate = formIncome.endDate,
+                    isActive = formIncome.isActive,
+                )
+                viewModel.onEditIncome(merged)
+            },
+        )
+    }
+
     // ── Delete confirmation AlertDialog ──────────────────────────────────────
     showDeleteConfirm?.let { item ->
         AlertDialog(
@@ -260,7 +327,7 @@ fun RecurringListScreen(
                 TextButton(
                     onClick = {
                         showDeleteConfirm = null
-                        viewModel.onDelete(item.id)
+                        viewModel.onDelete(item)
                     },
                 ) {
                     Text("Eliminar")

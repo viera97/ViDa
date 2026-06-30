@@ -8,11 +8,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.TrendingDown
+import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -27,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vida.domain.model.SourceType
 /** Frequency chip colors. */
 private val DailyColor = Color(0xFF1565C0)   // Blue
 private val WeeklyColor = Color(0xFF2E7D32)  // Green
@@ -84,22 +95,44 @@ fun RecurringListItem(
                 )
                 .padding(16.dp),
         ) {
-            // Headline row: amount + isActive Switch
+            // Headline row: expense icon + amount + isActive Switch
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Amount + currency
-                Text(
-                    text = "${item.amountFormatted} ${item.currencyCode}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (item.isActive)
-                        MaterialTheme.colorScheme.onSurface
-                    else
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // Type indicator (top-left of the card)
+                    Icon(
+                        imageVector = if (item.type == RecurringDisplayItem.ItemType.INCOME)
+                            Icons.Default.TrendingUp
+                        else
+                            Icons.Default.TrendingDown,
+                        contentDescription = if (item.type == RecurringDisplayItem.ItemType.INCOME)
+                            "Ingreso recurrente"
+                        else
+                            "Gasto recurrente",
+                        modifier = Modifier.size(20.dp),
+                        tint = if (item.isActive)
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+
+                    // Amount + currency
+                    Text(
+                        text = "${item.amountFormatted} ${item.currencyCode}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (item.isActive)
+                            MaterialTheme.colorScheme.onSurface
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    )
+                }
 
                 // isActive toggle
                 Switch(
@@ -122,39 +155,70 @@ fun RecurringListItem(
 
             Spacer(modifier = Modifier.padding(top = 8.dp))
 
-            // Badges row: category, frequency chip, sourceType icon, next due
+            // Badges row: category, frequency chip, source-type icon, next due,
+            // delete action. Delete is right-aligned via SpaceBetween.
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Category label
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer,
+                // Left group: category, frequency, source icon, next due date
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // Category label (hidden for incomes — no category)
+                    if (item.categoryName.isNotEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(4.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Text(
+                                text = item.categoryName,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            )
+                        }
+                    }
+
+                    // Frequency badge (colored)
+                    FrequencyColorChip(label = item.frequencyLabel)
+
+                    // Source-type Material icon (matches FuentesScreen pattern)
+                    Icon(
+                        imageVector = when (item.sourceType) {
+                            SourceType.WALLET -> Icons.Default.AccountBalanceWallet
+                            SourceType.CARD -> Icons.Default.CreditCard
+                            SourceType.STASH -> Icons.Default.AccountBalanceWallet
+                        },
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    // Next due date
                     Text(
-                        text = item.categoryName,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        text = item.nextDueFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
 
-                // Frequency badge (colored)
-                FrequencyColorChip(label = item.frequencyLabel)
-
-                // Source type icon
-                Text(
-                    text = item.sourceTypeIcon,
-                    style = MaterialTheme.typography.bodySmall,
-                )
-
-                // Next due date
-                Text(
-                    text = item.nextDueFormatted,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                // Right group: delete button (matches RateListItem pattern)
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.size(32.dp),
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error,
+                    ),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
         }
 

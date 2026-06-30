@@ -3,6 +3,8 @@ package com.vida.domain.repository
 import com.vida.domain.model.Income
 import com.vida.domain.model.IncomeFilter
 import com.vida.domain.model.SourceType
+import com.vida.domain.model.aggregate.CurrencyTotal
+import com.vida.domain.model.aggregate.PeriodIncomeTotal
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -27,6 +29,10 @@ interface IncomeRepository {
     suspend fun getBySource(sourceType: SourceType, sourceId: Long?, asOf: Instant): Flow<List<Income>>
     suspend fun getByDateRange(from: Instant, to: Instant): Flow<List<Income>>
     suspend fun searchIncomes(filter: IncomeFilter, limit: Int, offset: Int): List<Income>
+    // ── Aggregation methods for statistics ─────────────────────────────────
+    suspend fun getIncomeTotalsByPeriod(from: Instant, to: Instant, bucketMillis: Long): List<PeriodIncomeTotal>
+    suspend fun getIncomeTotalsByCurrency(from: Instant, to: Instant): List<CurrencyTotal>
+
     suspend fun upsert(income: Income): Long
     suspend fun delete(id: Long)
 }

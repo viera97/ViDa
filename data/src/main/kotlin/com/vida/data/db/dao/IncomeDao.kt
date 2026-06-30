@@ -6,6 +6,8 @@ import androidx.room.RawQuery
 import androidx.room.Upsert
 import androidx.sqlite.db.SupportSQLiteQuery
 import com.vida.data.db.entity.IncomeEntity
+import com.vida.domain.model.aggregate.CurrencyTotal
+import com.vida.domain.model.aggregate.PeriodIncomeTotal
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -54,6 +56,32 @@ interface IncomeDao {
      */
     @RawQuery
     suspend fun searchIncomes(query: SupportSQLiteQuery): List<IncomeEntity>
+
+    // ── Aggregation queries for statistics ─────────────────────────────────
+
+    @Query(
+        """
+        SELECT (date_time / :bucketMillis * :bucketMillis) AS periodStart,
+               amount_currency AS currency,
+               SUM(amount_minor) AS totalMinor
+        FROM incomes
+        WHERE date_time >= :from AND date_time < :to
+        GROUP BY periodStart, amount_currency
+        ORDER BY periodStart
+        """,
+    )
+    suspend fun getIncomeTotalsByPeriod(from: Long, to: Long, bucketMillis: Long): List<PeriodIncomeTotal>
+
+    @Query(
+        """
+        SELECT amount_currency AS currency,
+               SUM(amount_minor) AS totalMinor
+        FROM incomes
+        WHERE date_time >= :from AND date_time < :to
+        GROUP BY amount_currency
+        """,
+    )
+    suspend fun getIncomeTotalsByCurrency(from: Long, to: Long): List<CurrencyTotal>
 
     @Upsert
     suspend fun upsert(entity: IncomeEntity): Long

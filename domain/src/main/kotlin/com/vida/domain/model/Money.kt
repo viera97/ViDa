@@ -67,5 +67,17 @@ data class Money(
 
         fun of(amount: String, currency: Currency): Money =
             Money(BigDecimal(amount), currency)
+
+        /**
+         * Reconstruct [Money] from minor units (2-decimal fixed-point).
+         *
+         * E.g. minorUnits=1234, currency=CUP → Money(12.34, CUP).
+         */
+        fun fromMinorUnits(minorUnits: Long, currency: Currency): Money =
+            Money(
+                amount = BigDecimal(minorUnits)
+                    .divide(BigDecimal(100), 2, RoundingMode.HALF_EVEN),
+                currency = currency,
+            )
     }
 }

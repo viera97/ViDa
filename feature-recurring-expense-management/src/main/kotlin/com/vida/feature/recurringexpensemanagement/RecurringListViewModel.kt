@@ -5,28 +5,42 @@ import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Card
 import com.vida.domain.model.Category
 import com.vida.domain.model.Frequency
+import com.vida.domain.model.Income
 import com.vida.domain.model.RecurringExpense
+import com.vida.domain.model.RecurringIncome
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Expense
 import com.vida.domain.model.Stash
+import com.vida.domain.model.Wallet
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.RecordExpense
+import com.vida.domain.usecase.income.RecordIncome
 import com.vida.domain.usecase.recurring.AddRecurringExpense
+import com.vida.domain.usecase.recurring.AddRecurringIncome
 import com.vida.domain.usecase.recurring.DeleteRecurringExpense
+import com.vida.domain.usecase.recurring.DeleteRecurringIncome
 import com.vida.domain.usecase.recurring.GenerateRecurringExpense
+import com.vida.domain.usecase.recurring.GenerateRecurringIncome
 import com.vida.domain.usecase.recurring.GetDueRecurringExpenses
+import com.vida.domain.usecase.recurring.GetDueRecurringIncomes
 import com.vida.domain.usecase.recurring.GetRecurringExpense
+import com.vida.domain.usecase.recurring.GetRecurringIncome
 import com.vida.domain.usecase.recurring.ListRecurringExpenses
+import com.vida.domain.usecase.recurring.ListRecurringIncomes
 import com.vida.domain.usecase.recurring.UpdateRecurringExpense
+import com.vida.domain.usecase.recurring.UpdateRecurringIncome
 import com.vida.domain.usecase.stash.ListStashes
+import com.vida.domain.usecase.wallet.ListWallets
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -38,16 +52,12 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 
 /**
- * ViewModel for the recurring expense list screen.
+ * ViewModel for the recurring expense/income list screen.
  *
- * Collects [ListRecurringExpenses] as a reactive Flow — Room auto-re-emits
- * after mutations, so no manual refetch is needed.
+ * Collects [ListRecurringExpenses] and [ListRecurringIncomes] as reactive Flows,
+ * merges them into a single sorted list.
  *
  * Sort: isActive DESC → frequency ordinal ASC (DAILY first) → startDate ASC.
- *
- * PR #1: list, delete, toggle active, retry.
- * PR #2 (future): add/edit with form dialog.
- * PR #3 (future): two-step generate flow.
  */
 @HiltViewModel
 class RecurringListViewModel @Inject constructor(
@@ -59,9 +69,18 @@ class RecurringListViewModel @Inject constructor(
     private val getDueRecurringExpenses: GetDueRecurringExpenses,
     private val generateRecurringExpense: GenerateRecurringExpense,
     private val recordExpense: RecordExpense,
+    private val listRecurringIncomes: ListRecurringIncomes,
+    private val addRecurringIncome: AddRecurringIncome,
+    private val updateRecurringIncome: UpdateRecurringIncome,
+    private val deleteRecurringIncome: DeleteRecurringIncome,
+    private val getRecurringIncome: GetRecurringIncome,
+    private val getDueRecurringIncomes: GetDueRecurringIncomes,
+    private val generateRecurringIncome: GenerateRecurringIncome,
+    private val recordIncome: RecordIncome,
     private val listCategories: ListCategories,
     private val listCards: ListCards,
     private val listStashes: ListStashes,
+    private val listWallets: ListWallets,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecurringListUiState>(RecurringListUiState.Loading)
@@ -89,16 +108,20 @@ class RecurringListViewModel @Inject constructor(
     private val _stashes = MutableStateFlow<List<Stash>>(emptyList())
     val stashes: StateFlow<List<Stash>> = _stashes.asStateFlow()
 
+    private val _wallets = MutableStateFlow<List<Wallet>>(emptyList())
+    val wallets: StateFlow<List<Wallet>> = _wallets.asStateFlow()
+
+    /** Holds the active recurring-templates collection job so retries don't stack. */
+    private var recurringJob: Job? = null
+
     init {
-        collectRecurringExpenses()
         collectReferenceData()
     }
 
-    // ── Public actions ───────────────────────────────────────────────────────
+    // ── Public actions (expense) ──────────────────────────────────────────────
 
     /**
      * Emits [RecurringNavEvent.ShowAddDialog] so the screen opens the add dialog.
-     * Also triggers reference data collection (categories, cards, stashes) if needed.
      */
     fun onFabClick() {
         viewModelScope.launch {
@@ -108,10 +131,6 @@ class RecurringListViewModel @Inject constructor(
 
     /**
      * Adds a new recurring expense template.
-     *
-     * The [expense] must have `id = 0` (unsaved). Validation is enforced by
-     * [RecurringExpense.init] — if the form dialog produces an invalid entity,
-     * the error is caught and shown as a toast.
      */
     fun onAdd(expense: RecurringExpense) {
         if (_isSaving.value) return
@@ -120,7 +139,6 @@ class RecurringListViewModel @Inject constructor(
             _isSaving.value = true
             try {
                 addRecurringExpense(expense)
-                // Flow auto-re-emits — no manual refetch needed.
                 _navEvents.send(RecurringNavEvent.SaveSuccess)
                 _navEvents.send(RecurringNavEvent.ShowToast("Plantilla creada"))
             } catch (t: Throwable) {
@@ -138,9 +156,6 @@ class RecurringListViewModel @Inject constructor(
 
     /**
      * Updates an existing recurring expense template.
-     *
-     * The [expense] must carry the existing row's `id` and `lastGeneratedDate`.
-     * The caller (Screen) is responsible for merging form data with the existing entity.
      */
     fun onEdit(expense: RecurringExpense) {
         if (_isSaving.value) return
@@ -149,7 +164,6 @@ class RecurringListViewModel @Inject constructor(
             _isSaving.value = true
             try {
                 updateRecurringExpense(expense)
-                // Flow auto-re-emits.
                 _navEvents.send(RecurringNavEvent.SaveSuccess)
                 _navEvents.send(RecurringNavEvent.ShowToast("Plantilla actualizada"))
             } catch (t: Throwable) {
@@ -165,18 +179,92 @@ class RecurringListViewModel @Inject constructor(
         }
     }
 
+    // ── Public actions (income) ───────────────────────────────────────────────
+
     /**
-     * Fetches the full [RecurringExpense] entity for [item] and emits
-     * [RecurringNavEvent.ShowEditDialog] so the screen opens the edit form
-     * pre-populated with the entity's data.
+     * Emits [RecurringNavEvent.ShowAddIncomeDialog] so the screen opens the income add dialog.
+     */
+    fun onIncomeFabClick() {
+        viewModelScope.launch {
+            _navEvents.send(RecurringNavEvent.ShowAddIncomeDialog)
+        }
+    }
+
+    /**
+     * Adds a new recurring income template.
+     */
+    fun onAddIncome(income: RecurringIncome) {
+        if (_isSaving.value) return
+
+        viewModelScope.launch {
+            _isSaving.value = true
+            try {
+                addRecurringIncome(income)
+                _navEvents.send(RecurringNavEvent.SaveSuccess)
+                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla de ingreso creada"))
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _navEvents.send(
+                    RecurringNavEvent.ShowToast(
+                        t.message ?: "No se pudo crear la plantilla de ingreso",
+                    ),
+                )
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    /**
+     * Updates an existing recurring income template.
+     */
+    fun onEditIncome(income: RecurringIncome) {
+        if (_isSaving.value) return
+
+        viewModelScope.launch {
+            _isSaving.value = true
+            try {
+                updateRecurringIncome(income)
+                _navEvents.send(RecurringNavEvent.SaveSuccess)
+                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla de ingreso actualizada"))
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _navEvents.send(
+                    RecurringNavEvent.ShowToast(
+                        t.message ?: "No se pudo actualizar la plantilla de ingreso",
+                    ),
+                )
+            } finally {
+                _isSaving.value = false
+            }
+        }
+    }
+
+    // ── Public actions (dispatched by item type) ──────────────────────────────
+
+    /**
+     * Opens the edit dialog for the given item, dispatching to expense or income
+     * use cases based on [RecurringDisplayItem.type].
      */
     fun onOpenEditDialog(item: RecurringDisplayItem) {
         viewModelScope.launch {
-            val entity = getRecurringExpense(item.id)
-            if (entity != null) {
-                _navEvents.send(RecurringNavEvent.ShowEditDialog(entity))
-            } else {
-                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla no encontrada"))
+            when (item.type) {
+                RecurringDisplayItem.ItemType.EXPENSE -> {
+                    val entity = getRecurringExpense(item.id)
+                    if (entity != null) {
+                        _navEvents.send(RecurringNavEvent.ShowEditDialog(entity))
+                    } else {
+                        _navEvents.send(RecurringNavEvent.ShowToast("Plantilla no encontrada"))
+                    }
+                }
+                RecurringDisplayItem.ItemType.INCOME -> {
+                    val entity = getRecurringIncome(item.id)
+                    if (entity != null) {
+                        _navEvents.send(RecurringNavEvent.ShowIncomeEditDialog(entity))
+                    } else {
+                        _navEvents.send(RecurringNavEvent.ShowToast("Plantilla no encontrada"))
+                    }
+                }
             }
         }
     }
@@ -192,27 +280,24 @@ class RecurringListViewModel @Inject constructor(
     }
 
     /**
-     * Deletes the recurring expense template with [id].
-     *
-     * On success the reactive Flow re-emits and a success toast is shown.
-     * On error the current list is preserved and an error toast is shown.
+     * Deletes the recurring template with the given [item], dispatching to
+     * expense or income use cases based on type.
      */
-    fun onDelete(id: Long) {
+    fun onDelete(item: RecurringDisplayItem) {
         if (_isSaving.value) return
 
         val current = _uiState.value
         if (current !is RecurringListUiState.Ready) return
-
-        if (current.items.none { it.id == id }) return
+        if (current.items.none { it.id == item.id && it.type == item.type }) return
 
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                deleteRecurringExpense(id)
-                // Flow auto-re-emits — no manual refetch needed.
-                _navEvents.send(
-                    RecurringNavEvent.ShowToast("Plantilla eliminada"),
-                )
+                when (item.type) {
+                    RecurringDisplayItem.ItemType.EXPENSE -> deleteRecurringExpense(item.id)
+                    RecurringDisplayItem.ItemType.INCOME -> deleteRecurringIncome(item.id)
+                }
+                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla eliminada"))
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
                 _navEvents.send(
@@ -227,31 +312,37 @@ class RecurringListViewModel @Inject constructor(
     }
 
     /**
-     * Toggles the `isActive` flag on the template with [id].
-     *
-     * Fetches the full entity via [GetRecurringExpense], flips [RecurringExpense.isActive],
-     * and persists via [UpdateRecurringExpense]. The reactive Flow re-emits automatically.
+     * Toggles the `isActive` flag on the template for the given [item],
+     * dispatching to expense or income use cases based on type.
      */
-    fun onToggleActive(id: Long) {
+    fun onToggleActive(item: RecurringDisplayItem) {
         if (_isSaving.value) return
 
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                val existing = getRecurringExpense(id)
-                    ?: run {
-                        _navEvents.send(
-                            RecurringNavEvent.ShowToast("Plantilla no encontrada"),
-                        )
-                        return@launch
+                when (item.type) {
+                    RecurringDisplayItem.ItemType.EXPENSE -> {
+                        val existing = getRecurringExpense(item.id)
+                            ?: run {
+                                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla no encontrada"))
+                                return@launch
+                            }
+                        val toggled = existing.copy(isActive = !existing.isActive)
+                        updateRecurringExpense(toggled)
                     }
-                val toggled = existing.copy(isActive = !existing.isActive)
-                updateRecurringExpense(toggled)
-                // Flow auto-re-emits.
+                    RecurringDisplayItem.ItemType.INCOME -> {
+                        val existing = getRecurringIncome(item.id)
+                            ?: run {
+                                _navEvents.send(RecurringNavEvent.ShowToast("Plantilla no encontrada"))
+                                return@launch
+                            }
+                        val toggled = existing.copy(isActive = !existing.isActive)
+                        updateRecurringIncome(toggled)
+                    }
+                }
                 _navEvents.send(
-                    RecurringNavEvent.ShowToast(
-                        if (toggled.isActive) "Plantilla activada" else "Plantilla desactivada",
-                    ),
+                    RecurringNavEvent.ShowToast("Plantilla actualizada"),
                 )
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
@@ -266,56 +357,63 @@ class RecurringListViewModel @Inject constructor(
         }
     }
 
-    /** Re-initiates the Flow collection from the [RecurringListUiState.Error] state. */
-    fun onRetry() {
-        collectRecurringExpenses()
-    }
-
     /**
-     * Two-step generate flow for the recurring template with [id]:
-     *
-     * 1. [GenerateRecurringExpense] advances the template's `lastGeneratedDate`
-     *    and returns an expense ID. `0L` is the sentinel for "nothing generated"
-     *    (the caller skips step 2).
-     * 2. If step 1 returned a positive ID, [RecordExpense] persists a new
-     *    [Expense] row with the template's source/category/amount/description.
-     *
-     * On success a "Gasto generado" toast is emitted. On error the exception
-     * message is shown.
+     * Two-step generate flow for the recurring template with the given [item]:
+     * dispatches to expense or income use cases based on type.
      */
-    fun onGenerate(id: Long) {
+    fun onGenerate(item: RecurringDisplayItem) {
         if (_isGenerating.value) return
 
         viewModelScope.launch {
             _isGenerating.value = true
             try {
-                val generatedId = generateRecurringExpense(id)
-                if (generatedId > 0L) {
-                    val template = getRecurringExpense(id)
-                    if (template != null) {
-                        val expense = Expense(
-                            id = 0L,
-                            categoryId = template.categoryId,
-                            amount = template.amount,
-                            realAmount = null,
-                            description = template.description,
-                            dateTime = (template.lastGeneratedDate
-                                ?: LocalDate.now())
-                                .atStartOfDay(ZoneOffset.UTC)
-                                .toInstant(),
-                            sourceType = template.sourceType,
-                            sourceId = template.sourceId,
-                            note = null,
-                        )
-                        recordExpense(expense)
+                when (item.type) {
+                    RecurringDisplayItem.ItemType.EXPENSE -> {
+                        generateRecurringExpense(item.id)
+                        val template = getRecurringExpense(item.id)
+                        if (template != null) {
+                            val expense = Expense(
+                                id = 0L,
+                                categoryId = template.categoryId,
+                                amount = template.amount,
+                                realAmount = null,
+                                description = template.description,
+                                dateTime = (template.lastGeneratedDate
+                                    ?: LocalDate.now())
+                                    .atStartOfDay(ZoneOffset.UTC)
+                                    .toInstant(),
+                                sourceType = template.sourceType,
+                                sourceId = template.sourceId,
+                                note = null,
+                            )
+                            recordExpense(expense)
+                        }
+                    }
+                    RecurringDisplayItem.ItemType.INCOME -> {
+                        generateRecurringIncome(item.id)
+                        val template = getRecurringIncome(item.id)
+                        if (template != null) {
+                            val income = Income(
+                                id = 0L,
+                                amount = template.amount,
+                                description = template.description,
+                                dateTime = (template.lastGeneratedDate
+                                    ?: LocalDate.now())
+                                    .atStartOfDay(ZoneOffset.UTC)
+                                    .toInstant(),
+                                sourceType = template.sourceType,
+                                sourceId = template.sourceId,
+                                note = null,
+                            )
+                            recordIncome(income)
+                        }
                     }
                 }
-                _navEvents.send(RecurringNavEvent.ShowToast("Gasto generado"))
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
                 _navEvents.send(
                     RecurringNavEvent.ShowToast(
-                        t.message ?: "No se pudo generar el gasto",
+                        t.message ?: "No se pudo generar",
                     ),
                 )
             } finally {
@@ -324,16 +422,38 @@ class RecurringListViewModel @Inject constructor(
         }
     }
 
+    /** Re-initiates the Flow collection from the [RecurringListUiState.Error] state. */
+    fun onRetry() {
+        collectRecurringTemplates()
+    }
+
     // ── Internal ─────────────────────────────────────────────────────────────
 
     /**
-     * Collects the reactive [ListRecurringExpenses] Flow, sorts, maps to display
-     * items, and emits the appropriate [RecurringListUiState].
+     * Collects the reactive [ListRecurringExpenses] and [ListRecurringIncomes] Flows,
+     * merges them, sorts, maps to display items, and emits the appropriate
+     * [RecurringListUiState].
+     *
+     * Idempotent: cancels any previous collection job before starting a new one.
      */
-    private fun collectRecurringExpenses() {
-        viewModelScope.launch {
+    private fun collectRecurringTemplates() {
+        recurringJob?.cancel()
+        recurringJob = viewModelScope.launch {
             try {
-                listRecurringExpenses()
+                combine(
+                    listRecurringExpenses(),
+                    listRecurringIncomes(),
+                ) { expenses, incomes ->
+                    val categoriesById = _categories.value.associateBy { it.id }
+                    val expenseItems = expenses.map { it.toDisplayItem(categoriesById) }
+                    val incomeItems = incomes.map { it.toIncomeDisplayItem() }
+                    (expenseItems + incomeItems)
+                        .sortedWith(
+                            compareByDescending<RecurringDisplayItem> { it.isActive }
+                                .thenBy { it.frequencyOrdinal }
+                                .thenBy { it.startDateEpochDay },
+                        )
+                }
                     .onStart { _uiState.value = RecurringListUiState.Loading }
                     .catch { t ->
                         if (t is CancellationException) throw t
@@ -341,15 +461,7 @@ class RecurringListViewModel @Inject constructor(
                             message = t.message ?: "No se pudieron cargar las plantillas",
                         )
                     }
-                    .collect { templates ->
-                        val categoriesById = _categories.value.associateBy { it.id }
-                        val sorted = templates.sortedWith(
-                            compareByDescending<RecurringExpense> { it.isActive }
-                                .thenBy { it.frequency.ordinal }
-                                .thenBy { it.startDate },
-                        )
-                        val items = sorted.map { it.toDisplayItem(categoriesById) }
-
+                    .collect { items ->
                         _uiState.value = if (items.isEmpty()) {
                             RecurringListUiState.Empty
                         } else {
@@ -366,14 +478,27 @@ class RecurringListViewModel @Inject constructor(
     }
 
     /**
-     * Collects reference data (categories, cards, stashes) reactively for form
-     * dropdowns. These flows run once per ViewModel lifetime and auto-update
+     * Collects reference data (categories, cards, stashes, wallets) reactively for
+     * form dropdowns. These flows run once per ViewModel lifetime and auto-update
      * whenever the underlying Room tables change.
+     *
+     * The recurring templates collection is started from here, after the first
+     * non-empty emission of categories. This avoids a race condition where the
+     * templates Flow emits first and `categoriesById` is empty.
      */
     private fun collectReferenceData() {
         viewModelScope.launch {
-            listCategories().catch { /* categories unavailable — list stays empty */ }
-                .collect { _categories.value = it }
+            listCategories()
+                .catch { /* categories unavailable — list stays empty */ }
+                .collect { categories ->
+                    val firstNonEmpty = _categories.value.isEmpty() && categories.isNotEmpty()
+                    _categories.value = categories
+                    if (firstNonEmpty) {
+                        // Categories are now available — safe to start the
+                        // recurring templates collection.
+                        collectRecurringTemplates()
+                    }
+                }
         }
         viewModelScope.launch {
             listCards().catch { /* cards unavailable */ }
@@ -383,18 +508,14 @@ class RecurringListViewModel @Inject constructor(
             listStashes().catch { /* stashes unavailable */ }
                 .collect { _stashes.value = it }
         }
+        viewModelScope.launch {
+            listWallets().catch { /* wallets unavailable */ }
+                .collect { _wallets.value = it }
+        }
     }
 
     /**
      * Maps a domain [RecurringExpense] to a pre-formatted [RecurringDisplayItem].
-     *
-     * - amountFormatted: "###.00" from [RecurringExpense.amount].
-     * - currencyCode: [com.vida.domain.model.Currency.code].
-     * - categoryName: resolved from [categoriesById] lookup, falls back to id string.
-     * - frequencyLabel: Spanish label via [Frequency.toSpanishLabel].
-     * - sourceTypeIcon: emoji via [SourceType.toIcon].
-     * - nextDueFormatted: "dd/MM/yyyy" derived from lastGeneratedDate + 1 period,
-     *   falling back to startDate.
      */
     private fun RecurringExpense.toDisplayItem(
         categoriesById: Map<Long, Category> = emptyMap(),
@@ -407,20 +528,42 @@ class RecurringListViewModel @Inject constructor(
             currencyCode = currency.code,
             categoryName = categoriesById[categoryId]?.name ?: categoryId.toString(),
             frequencyLabel = frequency.toSpanishLabel(),
+            sourceType = sourceType,
             sourceTypeIcon = sourceType.toIcon(),
             nextDueFormatted = nextDueDate()?.format(formatter) ?: "—",
             description = description,
             isActive = isActive,
+            type = RecurringDisplayItem.ItemType.EXPENSE,
+            frequencyOrdinal = frequency.ordinal,
+            startDateEpochDay = startDate.toEpochDay(),
         )
     }
 
     /**
-     * Computes the next due date for this template.
-     *
-     * - If [RecurringExpense.lastGeneratedDate] is non-null, the next due date
-     *   is `lastGeneratedDate + 1 period` (using the template's frequency).
-     * - Otherwise falls back to [RecurringExpense.startDate].
-     * - Returns null when startDate hasn't been reached yet.
+     * Maps a domain [RecurringIncome] to a pre-formatted [RecurringDisplayItem].
+     */
+    private fun RecurringIncome.toIncomeDisplayItem(): RecurringDisplayItem {
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        val scale = amount.amount.setScale(2, RoundingMode.HALF_EVEN)
+        return RecurringDisplayItem(
+            id = id,
+            amountFormatted = scale.toPlainString(),
+            currencyCode = currency.code,
+            categoryName = "",
+            frequencyLabel = frequency.toSpanishLabel(),
+            sourceType = sourceType,
+            sourceTypeIcon = sourceType.toIcon(),
+            nextDueFormatted = nextDueDate()?.format(formatter) ?: "—",
+            description = description,
+            isActive = isActive,
+            type = RecurringDisplayItem.ItemType.INCOME,
+            frequencyOrdinal = frequency.ordinal,
+            startDateEpochDay = startDate.toEpochDay(),
+        )
+    }
+
+    /**
+     * Computes the next due date for this recurring expense template.
      */
     private fun RecurringExpense.nextDueDate(): LocalDate? {
         val lastGen = lastGeneratedDate
@@ -434,7 +577,25 @@ class RecurringListViewModel @Inject constructor(
         } else {
             startDate
         }
-        // startDate not yet reached — treat as "not eligible yet".
+        if (candidate.isBefore(startDate)) return null
+        return candidate
+    }
+
+    /**
+     * Computes the next due date for this recurring income template.
+     */
+    private fun RecurringIncome.nextDueDate(): LocalDate? {
+        val lastGen = lastGeneratedDate
+        val candidate = if (lastGen != null) {
+            when (frequency) {
+                Frequency.DAILY -> lastGen.plusDays(1)
+                Frequency.WEEKLY -> lastGen.plusWeeks(1)
+                Frequency.MONTHLY -> lastGen.plusMonths(1)
+                Frequency.YEARLY -> lastGen.plusYears(1)
+            }
+        } else {
+            startDate
+        }
         if (candidate.isBefore(startDate)) return null
         return candidate
     }

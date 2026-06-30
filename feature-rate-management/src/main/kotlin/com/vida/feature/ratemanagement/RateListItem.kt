@@ -101,22 +101,12 @@ fun RateListItem(
 
             Spacer(modifier = Modifier.padding(top = 8.dp))
 
-            // Details row: rate value + date
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = rate.rateFormatted,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-                Text(
-                    text = rate.updatedAtFormatted,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // Rate value
+            Text(
+                text = rate.rateFormatted,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
 
             // Provider
             Text(
@@ -124,6 +114,14 @@ fun RateListItem(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
+            )
+
+            // Date
+            Text(
+                text = rate.updatedAtFormatted,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 2.dp),
             )
 
             // ── Inverse rate sub-section ────────────────────────────────────

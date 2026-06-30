@@ -13,6 +13,8 @@ import com.vida.data.mapper.util.toEpochMillis
 import com.vida.domain.model.Income
 import com.vida.domain.model.IncomeFilter
 import com.vida.domain.model.SourceType
+import com.vida.domain.model.aggregate.CurrencyTotal
+import com.vida.domain.model.aggregate.PeriodIncomeTotal
 import com.vida.domain.repository.IncomeRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -74,6 +76,18 @@ class IncomeRepositoryImpl @Inject constructor(
             }
             newId
         }
+
+    // ── Aggregation methods for statistics ─────────────────────────────────
+
+    override suspend fun getIncomeTotalsByPeriod(
+        from: Instant,
+        to: Instant,
+        bucketMillis: Long,
+    ): List<PeriodIncomeTotal> =
+        dao.getIncomeTotalsByPeriod(from.toEpochMillis(), to.toEpochMillis(), bucketMillis)
+
+    override suspend fun getIncomeTotalsByCurrency(from: Instant, to: Instant): List<CurrencyTotal> =
+        dao.getIncomeTotalsByCurrency(from.toEpochMillis(), to.toEpochMillis())
 
     override suspend fun delete(id: Long) = dao.delete(id)
 

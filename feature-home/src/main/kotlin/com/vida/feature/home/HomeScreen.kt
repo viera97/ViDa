@@ -64,6 +64,7 @@ fun HomeScreen(
     onNavigateToExpenseList: () -> Unit = {},
     onNavigateToIncomeList: () -> Unit = {},
     onNavigateToFuentes: () -> Unit = {},
+    onNavigateToStats: () -> Unit = {},
     viewModel: HomeViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -71,14 +72,12 @@ fun HomeScreen(
     var showExpenseDialog by remember { mutableStateOf(false) }
     var showIncomeDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
-    var showStatsPlaceholder by remember { mutableStateOf(false) }
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Inicio") },
                 actions = {
-                    IconButton(onClick = { showStatsPlaceholder = true }) {
+                    IconButton(onClick = onNavigateToStats) {
                         Icon(
                             imageVector = Icons.Filled.BarChart,
                             contentDescription = "Estadísticas",
@@ -146,20 +145,6 @@ fun HomeScreen(
     // ── Info dialog ──────────────────────────────────────────────────────
     if (showInfoDialog) {
         InfoDialog(onDismiss = { showInfoDialog = false })
-    }
-
-    // ── Estadísticas placeholder ─────────────────────────────────────────
-    if (showStatsPlaceholder) {
-        AlertDialog(
-            onDismissRequest = { showStatsPlaceholder = false },
-            title = { Text("Estadísticas") },
-            text = { Text("Esta funcionalidad estará disponible próximamente.") },
-            confirmButton = {
-                TextButton(onClick = { showStatsPlaceholder = false }) {
-                    Text("Cerrar")
-                }
-            },
-        )
     }
 
     // Form dialogs — rendered as siblings of the Scaffold so they overlay the

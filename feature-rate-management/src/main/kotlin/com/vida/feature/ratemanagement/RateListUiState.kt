@@ -19,7 +19,7 @@ sealed interface RateListUiState {
     /** Emitted while [com.vida.domain.usecase.rate.ListCurrencyRates] is in-flight. */
     data object Loading : RateListUiState
 
-    /** Rates loaded and sorted (by pair then updatedAt DESC). */
+    /** Rates loaded and sorted (by updatedAt DESC, then by pair, then by provider). */
     data class Ready(val items: List<RateDisplayItem>) : RateListUiState
 
     /** No currency rates exist in the database. */

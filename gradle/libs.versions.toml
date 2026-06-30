@@ -18,9 +18,10 @@ room = "2.7.1"
 robolectric = "4.14.1"
 androidxTestExtJunit = "1.2.1"
 androidxArchCoreTesting = "2.2.0"
-sqlcipher = "4.5.4"
-androidxSqlite = "2.2.0"
+sqlcipher = "4.16.0"
+androidxSqlite = "2.6.2"
 navigationCompose = "2.8.6"
+vico = "2.1.0"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version = "1.15.0" }
@@ -53,9 +54,10 @@ androidx-room-testing = { module = "androidx.room:room-testing", version.ref = "
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
 androidx-arch-core-testing = { module = "androidx.arch.core:core-testing", version.ref = "androidxArchCoreTesting" }
-sqlcipher = { module = "net.zetetic:android-database-sqlcipher", version.ref = "sqlcipher" }
+sqlcipher = { module = "net.zetetic:sqlcipher-android", version.ref = "sqlcipher" }
 androidx-sqlite = { module = "androidx.sqlite:sqlite", version.ref = "androidxSqlite" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
+vico-compose-m3 = { module = "com.patrykandpatrick.vico:compose-m3", version.ref = "vico" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

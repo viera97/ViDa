@@ -2,6 +2,8 @@ package com.vida.feature.recurringexpensemanagement
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,8 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
@@ -24,13 +24,16 @@ import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardOptions
 import com.vida.domain.model.Card
 import com.vida.domain.model.Category
 import com.vida.domain.model.Currency
@@ -39,6 +42,7 @@ import com.vida.domain.model.Money
 import com.vida.domain.model.RecurringExpense
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Stash
+import com.vida.domain.model.Wallet
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.LocalDate
@@ -55,8 +59,8 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  * - amount: [OutlinedTextField] with real-time BigDecimal validation
  * - currency: [FilterChip] row (CUP / USD / MLC)
  * - categoryId: dropdown via [Category] list
- * - sourceType: [FilterChip] row (WALLET / CARD / STASH)
- * - sourceId: conditional — hidden for WALLET; dropdown of [Card] or [Stash] list
+ * - sourceType + sourceId: combined picker via bottom sheet (wallets + cards only;
+ *   stashes are intentionally not allowed for recurring expenses)
  * - description: [OutlinedTextField]
  * - frequency: [FilterChip] row (DAILY / WEEKLY / MONTHLY / YEARLY)
  * - startDate: [DatePickerDialog] (default today)
@@ -69,7 +73,7 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  * @param initialCurrency Default [Currency] selection.
  * @param initialCategoryId Pre-selected category id (null = none).
  * @param initialSourceType Default [SourceType] selection.
- * @param initialSourceId Pre-selected source id (null for WALLET).
+ * @param initialSourceId Pre-selected source id (null = none).
  * @param initialDescription Pre-populated description (empty for add).
  * @param initialFrequency Pre-selected frequency (null = none).
  * @param initialStartDate Start date for the template.
@@ -84,7 +88,7 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  * @param onSave Called with the constructed [RecurringExpense] when the user confirms.
  *               (id=0, lastGeneratedDate=null — caller merges for edits.)
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RecurringFormDialog(
     initialAmount: String = "",
@@ -100,6 +104,7 @@ fun RecurringFormDialog(
     isEdit: Boolean = false,
     isSaving: Boolean = false,
     categories: List<Category> = emptyList(),
+    wallets: List<Wallet> = emptyList(),
     cards: List<Card> = emptyList(),
     stashes: List<Stash> = emptyList(),
     onDismiss: () -> Unit,
@@ -145,13 +150,25 @@ fun RecurringFormDialog(
     }
     val isDescriptionValid = description.isNotBlank() && description.length <= 200
 
-    val isSourceIdValid = when (sourceType) {
-        SourceType.WALLET -> true // no sourceId needed
-        SourceType.CARD, SourceType.STASH -> selectedSourceId != null
-    }
+    val isSourceIdValid = selectedSourceId != null
 
     val endDateError: String? = endDate?.let { ed ->
         if (ed.isBefore(startDate)) "La fecha fin no puede ser anterior al inicio" else null
+    }
+
+    // When a source is selected, lock the currency to the source's currency
+    // (mirrors `feature-expense`'s amount section behavior).
+    val availableSources = remember(wallets, cards) {
+        wallets.toWalletSourceItems() + cards.toCardSourceItems()
+    }
+    val selectedSource = remember(availableSources, sourceType, selectedSourceId) {
+        availableSources.firstOrNull {
+            it.id == selectedSourceId && it.type == sourceType
+        }
+    }
+    val isCurrencyLocked = selectedSource != null
+    LaunchedEffect(selectedSource?.currency) {
+        selectedSource?.currency?.let { currency = it }
     }
 
     val isSaveEnabled = isAmountValid
@@ -164,15 +181,6 @@ fun RecurringFormDialog(
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    val selectedCategoryName = categories.find { it.id == selectedCategoryId }?.name ?: "Seleccionar..."
-    val selectedSourceLabel: String = when (sourceType) {
-        SourceType.WALLET -> "—"
-        SourceType.CARD -> cards.find { it.id == selectedSourceId }?.let { c ->
-            "${c.bank} · ${c.number.masked}"
-        } ?: "Seleccionar..."
-        SourceType.STASH -> stashes.find { it.id == selectedSourceId }?.name ?: "Seleccionar..."
-    }
-
     fun buildExpense(): RecurringExpense {
         val parsedAmount = amountParseResult.getOrThrow()
         val money = Money(parsedAmount, currency)
@@ -182,7 +190,7 @@ fun RecurringFormDialog(
             currency = currency,
             categoryId = selectedCategoryId ?: error("category not selected"),
             sourceType = sourceType,
-            sourceId = if (sourceType == SourceType.WALLET) null else selectedSourceId,
+            sourceId = selectedSourceId,
             description = description.trim(),
             frequency = frequency ?: error("frequency not selected"),
             startDate = startDate,
@@ -244,7 +252,7 @@ fun RecurringFormDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text(if (isEdit) "Editar plantilla" else "Agregar plantilla") },
+        title = { Text(if (isEdit) "Editar Gasto" else "Agregar Gasto") },
         text = {
             Column(
                 modifier = Modifier
@@ -259,6 +267,7 @@ fun RecurringFormDialog(
                     label = { Text("Monto") },
                     isError = amountError != null,
                     supportingText = amountError?.let { { Text(it) } },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -270,112 +279,51 @@ fun RecurringFormDialog(
                         FilterChip(
                             selected = currency == curr,
                             onClick = { currency = curr },
+                            enabled = !isCurrencyLocked,
                             label = { Text(curr.code) },
                         )
                     }
                 }
 
                 // ── Category ────────────────────────────────────────────
-                Text("Categoría", style = MaterialTheme.typography.bodySmall)
-                OutlinedButton(
-                    onClick = { categoryExpanded = true },
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(selectedCategoryName)
+                val selectedCategory = remember(categories, selectedCategoryId) {
+                    categories.firstOrNull { it.id == selectedCategoryId }
                 }
-                DropdownMenu(
-                    expanded = categoryExpanded,
-                    onDismissRequest = { categoryExpanded = false },
-                    modifier = Modifier.fillMaxWidth(0.9f),
-                ) {
-                    categories.forEach { cat ->
-                        DropdownMenuItem(
-                            text = { Text(cat.name) },
-                            onClick = {
-                                selectedCategoryId = cat.id
-                                categoryExpanded = false
-                            },
-                        )
-                    }
+                RecurringCategorySelector(
+                    selectedCategory = selectedCategory,
+                    onShowSheet = { categoryExpanded = true },
+                    error = null,
+                )
+                if (categoryExpanded) {
+                    RecurringCategorySheet(
+                        categories = categories,
+                        selectedId = selectedCategoryId,
+                        onDismiss = { categoryExpanded = false },
+                        onCategorySelected = { id ->
+                            selectedCategoryId = id
+                            categoryExpanded = false
+                        },
+                    )
                 }
 
-                // ── Source type ─────────────────────────────────────────
-                Text("Origen", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SourceType.entries.forEach { st ->
-                        FilterChip(
-                            selected = sourceType == st,
-                            onClick = {
-                                sourceType = st
-                                // Reset sourceId when source type changes
-                                selectedSourceId = null
-                            },
-                            label = {
-                                Text(
-                                    when (st) {
-                                        SourceType.WALLET -> "Billetera"
-                                        SourceType.CARD -> "Tarjeta"
-                                        SourceType.STASH -> "Ahorro"
-                                    },
-                                )
-                            },
-                        )
-                    }
-                }
-
-                // ── Source selector (conditional) ───────────────────────
-                when (sourceType) {
-                    SourceType.WALLET -> { /* No source selector needed */ }
-                    SourceType.CARD -> {
-                        Text("Tarjeta", style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(
-                            onClick = { sourceExpanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(selectedSourceLabel)
-                        }
-                        DropdownMenu(
-                            expanded = sourceExpanded,
-                            onDismissRequest = { sourceExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f),
-                        ) {
-                            cards.forEach { card ->
-                                DropdownMenuItem(
-                                    text = {
-                                        Text("${card.bank} · ${card.number.masked}")
-                                    },
-                                    onClick = {
-                                        selectedSourceId = card.id
-                                        sourceExpanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
-                    SourceType.STASH -> {
-                        Text("Ahorro", style = MaterialTheme.typography.bodySmall)
-                        OutlinedButton(
-                            onClick = { sourceExpanded = true },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(selectedSourceLabel)
-                        }
-                        DropdownMenu(
-                            expanded = sourceExpanded,
-                            onDismissRequest = { sourceExpanded = false },
-                            modifier = Modifier.fillMaxWidth(0.9f),
-                        ) {
-                            stashes.forEach { stash ->
-                                DropdownMenuItem(
-                                    text = { Text(stash.name) },
-                                    onClick = {
-                                        selectedSourceId = stash.id
-                                        sourceExpanded = false
-                                    },
-                                )
-                            }
-                        }
-                    }
+                // ── Source (wallet or card) ──────────────────────────────
+                // Stashes are intentionally not exposed for recurring expenses.
+                RecurringSourceSelector(
+                    selectedSource = selectedSource,
+                    onShowSheet = { sourceExpanded = true },
+                    error = null,
+                )
+                if (sourceExpanded) {
+                    RecurringSourceSheet(
+                        sources = availableSources,
+                        selectedSource = selectedSource,
+                        onDismiss = { sourceExpanded = false },
+                        onSourceSelected = { picked ->
+                            sourceType = picked.type
+                            selectedSourceId = picked.id
+                            sourceExpanded = false
+                        },
+                    )
                 }
 
                 // ── Description ─────────────────────────────────────────
@@ -391,7 +339,11 @@ fun RecurringFormDialog(
 
                 // ── Frequency ───────────────────────────────────────────
                 Text("Frecuencia", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Frequency.entries.forEach { freq ->
                         FilterChip(
                             selected = frequency == freq,

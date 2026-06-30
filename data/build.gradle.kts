@@ -46,7 +46,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // SQLCipher
-    implementation(libs.sqlcipher)
+    implementation("net.zetetic:sqlcipher-android:${libs.versions.sqlcipher.get()}@aar")
     implementation(libs.androidx.sqlite)
 
     // Tests

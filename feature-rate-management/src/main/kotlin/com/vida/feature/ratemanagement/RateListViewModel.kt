@@ -313,9 +313,10 @@ class RateListViewModel @Inject constructor(
      * the appropriate [RateListUiState].
      *
      * Each pair (X→Y) is rendered once in the grid; the inverse (Y→X) is
-     * nested inside the same card. To avoid double-rendering, we only emit
-     * the primary when its key sorts before the inverse key (alphabetical
-     * pair comparison).
+     * nested inside the same card. To avoid double-rendering, both
+     * directions of the same pair land in the same [groupKey] bucket and we
+     * only emit one card per bucket — the most-recently-updated direction
+     * becomes the card headline (see [buildDisplayItem]).
      */
     private fun loadRates() {
         viewModelScope.launch {
@@ -331,10 +332,12 @@ class RateListViewModel @Inject constructor(
                 val items = byGroup.values
                     .map { group -> buildDisplayItem(group) }
                     .sortedWith(
-                        compareBy<RateDisplayItem> { it.fromCurrency.code }
-                            .thenBy { it.toCurrency.code }
-                            .thenBy { it.provider }
-                            .thenByDescending { it.updatedAt },
+                        // Most-recently updated rate first (matches the
+                        // primary-direction rule above so the freshly
+                        // created/edited card surfaces on top).
+                        compareByDescending<RateDisplayItem> { it.updatedAt }
+                            .thenBy { it.pairLabel }
+                            .thenBy { it.provider },
                     )
 
                 _uiState.value = if (items.isEmpty()) {
@@ -355,10 +358,12 @@ class RateListViewModel @Inject constructor(
      * Builds a single [RateDisplayItem] for a group of rates sharing the same
      * normalized pair and provider.
      *
-     * - Primary direction: the one with the lexicographically smaller
-     *   `fromCurrency.code` first (e.g. CUP→USD before USD→CUP). If only one
-     *   direction exists, it is the primary regardless.
-     * - Most-recent wins per direction (handles historical snapshots).
+     * - Primary direction: the one the user touched most recently (i.e. with
+     *   the latest `updatedAt`). This means the card headline reflects the
+     *   pair the user actually created/edited, instead of always picking the
+     *   alphabetically smaller `fromCurrency.code` (which would flip CUP↔USD
+     *   rates against user intent).
+     * - If only one direction exists, it is the primary regardless.
      * - The inverse is the other direction (when present) for the same
      *   provider.
      */
@@ -372,8 +377,13 @@ class RateListViewModel @Inject constructor(
             dir.maxByOrNull { it.updatedAt }!!
         }
 
-        // Primary direction: alphabetically smaller fromCurrency wins.
-        val primaryDirection = latestPerDirection.minByOrNull { it.fromCurrency.code }!!
+        // Primary direction: the one with the latest updatedAt (the pair the
+        // user last created or edited). Ties broken by pairLabel so the order
+        // is deterministic.
+        val primaryDirection = latestPerDirection.maxWithOrNull(
+            compareBy<CurrencyRate> { it.updatedAt }
+                .thenBy { "${it.fromCurrency.code} → ${it.toCurrency.code}" },
+        )!!
         val inverseDirection = latestPerDirection.firstOrNull {
             it.fromCurrency == primaryDirection.toCurrency &&
                 it.toCurrency == primaryDirection.fromCurrency
