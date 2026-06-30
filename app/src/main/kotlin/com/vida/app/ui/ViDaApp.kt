@@ -13,7 +13,6 @@ import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -29,16 +28,22 @@ import androidx.navigation.compose.rememberNavController
 import com.vida.feature.cardmanagement.CardListScreen
 import com.vida.feature.categorymanagement.CategoryListScreen
 import com.vida.feature.ratemanagement.RateListScreen
+import com.vida.app.ui.SettingsScreen
 import com.vida.feature.recurringexpensemanagement.RecurringListScreen
 import com.vida.feature.stashmanagement.StashListScreen
 import com.vida.feature.expense.ExpenseFormScreen
 import com.vida.feature.expenselist.ExpenseDetailScreen
 import com.vida.feature.expenselist.ExpenseListScreen
 import com.vida.feature.home.HomeScreen
+import com.vida.feature.reports.ReportsScreen
+import com.vida.feature.statistics.StatisticsScreen
 import com.vida.feature.incomelist.IncomeDetailScreen
 import com.vida.feature.incomelist.IncomeListScreen
 import com.vida.feature.transfermanagement.TransferFormScreen
 import com.vida.feature.walletmanagement.WalletScreen
+import com.vida.app.ui.theme.ThemeMode
+import com.vida.app.ui.theme.ViDaTheme
+import com.vida.app.ui.theme.rememberThemeMode
 
 /**
  * Root app composable. Sets up [NavHost] with routes:
@@ -47,7 +52,8 @@ import com.vida.feature.walletmanagement.WalletScreen
  * - "transfer/new" → [TransferFormScreen] (transfer creation form)
  * - "expenses" → [ExpenseListScreen] (full expense list with filters)
  * - "expense/{id}" → [ExpenseDetailScreen] (placeholder for PR #3)
- * - "categories" → [CategoryListScreen] (category management)
+ * - "settings" → [SettingsScreen] (app configuration hub)
+ * - "categories" → [CategoryListScreen] (category management, from settings)
  * - "cards" → [CardListScreen] (card management)
  * - "stashes" → [StashListScreen] (stash/savings management)
  * - "rates" → [RateListScreen] (currency rate management)
@@ -66,7 +72,11 @@ fun ViDaApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
+    val themeModeState = rememberThemeMode()
+    val themeMode by themeModeState
+    val onThemeModeChange: (ThemeMode) -> Unit = { themeModeState.value = it }
 
+    ViDaTheme(themeMode = themeMode) {
     Scaffold(
         bottomBar = {
             NavigationBar {
@@ -134,12 +144,12 @@ fun ViDaApp() {
                     icon = {
                         Icon(
                             Icons.Default.Settings,
-                            contentDescription = "Categorías",
+                            contentDescription = "Configuración",
                         )
                     },
-                    selected = currentRoute == "categories",
+                    selected = currentRoute == "settings",
                     onClick = {
-                        navController.navigate("categories") {
+                        navController.navigate("settings") {
                             popUpTo("home") { inclusive = false }
                             launchSingleTop = true
                         }
@@ -166,6 +176,7 @@ fun ViDaApp() {
                     onNavigateToExpenseList = { navController.navigate("expenses") },
                     onNavigateToIncomeList = { navController.navigate("incomes") },
                     onNavigateToFuentes = { navController.navigate("fuentes") },
+                    onNavigateToStats = { navController.navigate("stats") },
                 )
             }
             composable(
@@ -248,6 +259,19 @@ fun ViDaApp() {
                 )
             }
             composable(
+                "settings",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                SettingsScreen(
+                    themeMode = themeMode,
+                    onThemeModeChange = onThemeModeChange,
+                    onNavigateToCategories = { navController.navigate("categories") },
+                )
+            }
+            composable(
                 "categories",
                 enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
                 exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
@@ -317,6 +341,30 @@ fun ViDaApp() {
                     onNavigateToCards = { navController.navigate("cards") },
                 )
             }
+            composable(
+                "stats",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                StatisticsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToReports = { navController.navigate("reports") },
+                )
+            }
+            composable(
+                "reports",
+                enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+            ) {
+                ReportsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                )
+            }
         }
+    }
     }
 }

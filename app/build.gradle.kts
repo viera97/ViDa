@@ -13,6 +13,15 @@ android {
     namespace = "com.vida.app"
     compileSdk = 36
 
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("vida.keystore")
+            storePassword = "newworld"
+            keyAlias = "vida"
+            keyPassword = "newworld"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.vida.app"
         minSdk = 26
@@ -23,7 +32,8 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -55,6 +65,8 @@ dependencies {
     implementation(project(":feature-stash-management"))
     implementation(project(":feature-recurring-expense-management"))
     implementation(project(":feature-rate-management"))
+    implementation(project(":feature-reports"))
+    implementation(project(":feature-statistics"))
     implementation(project(":feature-transfer-management"))
     implementation(project(":feature-wallet-management"))
     implementation(libs.androidx.navigation.compose)
