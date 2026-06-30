@@ -8,6 +8,9 @@ package com.vida.feature.onboarding
  * i18n is a one-file grep.
  */
 object OnboardingCopy {
-    // Welcome step strings land in T-WIZ-004.
-    // Wallet-or-Card / Get-Started strings land in their respective tasks.
+    // Welcome step
+    const val WELCOME_HEADLINE = "¡Bienvenido a ViDa!"
+    const val WELCOME_SUBHEAD = "Tu billetera personal, simple y privada."
+    const val WELCOME_PRIMARY = "Empezar"
+    const val WELCOME_SKIP = "Saltar"
 }

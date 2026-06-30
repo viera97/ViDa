@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.vida.feature.onboarding.welcome.WelcomeScreen
 
 /**
  * Registers the three wizard routes inside the parent NavHost.
@@ -49,11 +50,8 @@ fun NavGraphBuilder.onboardingNavGraph(
         popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
     ) {
-        StubScreen(
-            title = "Welcome",
-            continueLabel = "Continuar",
+        WelcomeScreen(
             onContinue = { navController.navigate(OnboardingRoutes.WALLET_OR_CARD) },
-            skipLabel = "Saltar",
             onSkip = onFinished,
         )
     }
