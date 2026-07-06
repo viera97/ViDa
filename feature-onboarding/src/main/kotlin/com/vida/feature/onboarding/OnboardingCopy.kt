@@ -25,4 +25,11 @@ object OnboardingCopy {
     const val WOC_FIELD_CARD_BALANCE = "Saldo"
     const val WOC_PRIMARY = "Continuar"
     const val WOC_SKIP = "Saltar"
+
+    // Get-started step
+    const val GS_HEADLINE = "¡Todo listo!"
+    const val GS_BODY =
+        "Ya podés registrar gastos, ingresos y transferir entre tus fuentes desde la pantalla principal."
+    const val GS_PRIMARY = "Ir al inicio"
+    const val GS_SKIP = "Saltar"
 }
