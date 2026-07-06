@@ -2,6 +2,9 @@ package com.vida.feature.onboarding.walletorcard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vida.domain.model.Card
+import com.vida.domain.model.CardNumber
+import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.model.Wallet
@@ -18,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
+import java.time.LocalDate
 import javax.inject.Inject
 
 /**
@@ -146,12 +150,69 @@ class WalletOrCardViewModel @Inject constructor(
         }
     }
 
-    /** Skeleton submit — no persistence yet. Real flow lands in T-WIZ-008. */
+    /**
+     * Validates the card form, then calls [AddCard] with the locked
+     * defaults (per spec: `first6 = "000000"`, `expirationDate = now+4y`,
+     * `type = DEBIT`, `note = ""`). `Card.bank` is required and `last4`
+     * must be exactly 4 digits.
+     */
     fun submitCard() {
+        val s = _uiState.value as? WalletOrCardUiState.EditingCard ?: return
+        val bank = s.bank.trim()
+        val bankError: String? = if (bank.isEmpty()) OnboardingCopy.WOC_ERR_BANK_BLANK else null
+        val last4Error: String? = when {
+            s.last4.length != 4 -> OnboardingCopy.WOC_ERR_LAST4_FORMAT
+            !s.last4.all { it.isDigit() } -> OnboardingCopy.WOC_ERR_LAST4_FORMAT
+            else -> null
+        }
+        if (bankError != null || last4Error != null) {
+            _uiState.value = s.copy(bankError = bankError, last4Error = last4Error)
+            return
+        }
+        val balanceMinor = parseBalanceMinor(s.balance)
+        if (balanceMinor == null) {
+            _uiState.value = s.copy(balanceError = OnboardingCopy.WOC_ERR_BALANCE_PARSE)
+            return
+        }
+        val number = try {
+            // CardNumber.fromFirst6Last4 enforces the format; safe to call here
+            // because s.last4 is already validated to be exactly 4 digits.
+            CardNumber.fromFirst6Last4("000000", s.last4)
+        } catch (e: IllegalArgumentException) {
+            _uiState.value = s.copy(last4Error = OnboardingCopy.WOC_ERR_LAST4_FORMAT)
+            return
+        }
+        val card = Card(
+            id = 0L,
+            number = number,
+            bank = bank,
+            type = CardType.DEBIT,
+            currency = s.currency,
+            note = "",
+            expirationDate = LocalDate.now().plusYears(4),
+            balance = Money.fromMinorUnits(balanceMinor, s.currency),
+        )
         viewModelScope.launch {
             _uiState.value = WalletOrCardUiState.SavingCard
-            _uiState.value = WalletOrCardUiState.Saved
-            _navEvents.send(WalletOrCardNavEvent.Continue)
+            try {
+                addCard(card)
+                _uiState.value = WalletOrCardUiState.Saved
+                _navEvents.send(WalletOrCardNavEvent.Continue)
+            } catch (t: Throwable) {
+                if (t is CancellationException) throw t
+                _uiState.value = WalletOrCardUiState.EditingCard(
+                    bank = s.bank,
+                    last4 = s.last4,
+                    currency = s.currency,
+                    balance = s.balance,
+                    bankError = t.message,
+                )
+                _navEvents.send(
+                    WalletOrCardNavEvent.Snackbar(
+                        t.message ?: "No se pudo guardar la tarjeta",
+                    ),
+                )
+            }
         }
     }
 
