@@ -25,6 +25,9 @@ object OnboardingCopy {
     const val WOC_FIELD_CARD_BALANCE = "Saldo"
     const val WOC_PRIMARY = "Continuar"
     const val WOC_SKIP = "Saltar"
+    const val WOC_ERR_NAME_BLANK = "El nombre es obligatorio"
+    const val WOC_ERR_NAME_LONG = "Máximo 100 caracteres"
+    const val WOC_ERR_BALANCE_PARSE = "Saldo inválido"
 
     // Get-started step
     const val GS_HEADLINE = "¡Todo listo!"
