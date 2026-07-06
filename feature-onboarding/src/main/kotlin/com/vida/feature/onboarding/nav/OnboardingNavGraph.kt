@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.vida.feature.onboarding.walletorcard.WalletOrCardScreen
 import com.vida.feature.onboarding.welcome.WelcomeScreen
 
 /**
@@ -62,11 +63,8 @@ fun NavGraphBuilder.onboardingNavGraph(
         popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
     ) {
-        StubScreen(
-            title = "WalletOrCard",
-            continueLabel = "Continuar",
+        WalletOrCardScreen(
             onContinue = { navController.navigate(OnboardingRoutes.GET_STARTED) },
-            skipLabel = "Saltar",
             onSkip = onFinished,
         )
     }

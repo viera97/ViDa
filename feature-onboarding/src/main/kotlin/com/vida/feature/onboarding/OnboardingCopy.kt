@@ -13,4 +13,16 @@ object OnboardingCopy {
     const val WELCOME_SUBHEAD = "Tu billetera personal, simple y privada."
     const val WELCOME_PRIMARY = "Empezar"
     const val WELCOME_SKIP = "Saltar"
+
+    // Wallet-or-card step
+    const val WOC_HEADLINE = "Crea tu primera fuente"
+    const val WOC_SUBHEAD = "¿Qué quieres registrar?"
+    const val WOC_SEGMENT_WALLET = "Billetera"
+    const val WOC_SEGMENT_CARD = "Tarjeta"
+    const val WOC_FIELD_NAME = "Nombre"
+    const val WOC_FIELD_CURRENCY = "Moneda"
+    const val WOC_FIELD_WALLET_BALANCE = "Saldo inicial"
+    const val WOC_FIELD_CARD_BALANCE = "Saldo"
+    const val WOC_PRIMARY = "Continuar"
+    const val WOC_SKIP = "Saltar"
 }
