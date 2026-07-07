@@ -64,7 +64,12 @@ fun GetStartedScreen(
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
         )
-        Button(onClick = onFinish) {
+        Button(onClick = {
+            scope.launch {
+                viewModel.markCompleted()
+                onFinish()
+            }
+        }) {
             Text(text = GS_PRIMARY)
         }
         TextButton(
