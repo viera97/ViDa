@@ -13,12 +13,28 @@ android {
     namespace = "com.vida.app"
     compileSdk = 36
 
+    // Signing config for release builds. Reads from gradle.properties
+    // (project.findProperty) or environment variables. Never commits secrets.
+    // Required env vars (or gradle properties) for `./gradlew assembleRelease`:
+    //   VIDA_RELEASE_KEYSTORE_PATH  — path to .keystore file (default: vida.keystore)
+    //   VIDA_RELEASE_STORE_PASSWORD — keystore password
+    //   VIDA_RELEASE_KEY_ALIAS      — key alias (default: vida)
+    //   VIDA_RELEASE_KEY_PASSWORD   — key password
     signingConfigs {
         create("release") {
-            storeFile = rootProject.file("vida.keystore")
-            storePassword = "newworld"
-            keyAlias = "vida"
-            keyPassword = "newworld"
+            val keystorePath = (project.findProperty("vida.release.keystore.path") as String?)
+                ?: System.getenv("VIDA_RELEASE_KEYSTORE_PATH")
+                ?: "vida.keystore"
+            storeFile = rootProject.file(keystorePath)
+            storePassword = (project.findProperty("vida.release.store.password") as String?)
+                ?: System.getenv("VIDA_RELEASE_STORE_PASSWORD")
+                ?: error("VIDA_RELEASE_STORE_PASSWORD not set")
+            keyAlias = (project.findProperty("vida.release.key.alias") as String?)
+                ?: System.getenv("VIDA_RELEASE_KEY_ALIAS")
+                ?: "vida"
+            keyPassword = (project.findProperty("vida.release.key.password") as String?)
+                ?: System.getenv("VIDA_RELEASE_KEY_PASSWORD")
+                ?: error("VIDA_RELEASE_KEY_PASSWORD not set")
         }
     }
 
