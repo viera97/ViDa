@@ -2,6 +2,7 @@ package com.vida.app.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -87,7 +88,7 @@ private val CardType.badgeColor: Color
         CardType.PREPAID -> PrepaidColor
     }
 
-// ── Bandec brand gradient ────────────────────────────────────────────────────
+// ── Bank brand gradients ─────────────────────────────────────────────────────
 
 private val BandecColor = Color(0xFF8E0509)
 private val BandecGradient = Brush.horizontalGradient(
@@ -96,6 +97,16 @@ private val BandecGradient = Brush.horizontalGradient(
         BandecColor,
     ),
 )
+
+private val BPAColor: Color
+    @Composable get() = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) Color(0xFFBCD1DA) else Color(0xFF5C7882)
+private val BPAGradient: Brush
+    @Composable get() = Brush.horizontalGradient(
+        colors = listOf(
+            BPAColor.copy(alpha = 0.10f),
+            BPAColor,
+        ),
+    )
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -556,14 +567,20 @@ private fun WalletSummaryCard(wallet: WalletDisplayItem, onClick: () -> Unit) {
 @Composable
 private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
     val isBandec = card.bank.trim().equals("Bandec", ignoreCase = true)
-    val cardModifier = if (isBandec) {
+    val isBPA = card.bank.trim().equals("BPA", ignoreCase = true)
+    val brandGradient: Brush? = when {
+        isBandec -> BandecGradient
+        isBPA -> BPAGradient
+        else -> null
+    }
+    val cardModifier = if (brandGradient != null) {
         Modifier
             .fillMaxWidth()
-            .background(brush = BandecGradient, shape = RoundedCornerShape(12.dp))
+            .background(brush = brandGradient, shape = RoundedCornerShape(12.dp))
     } else {
         Modifier.fillMaxWidth()
     }
-    val cardColors = if (isBandec) {
+    val cardColors = if (brandGradient != null) {
         CardDefaults.cardColors(containerColor = Color.Transparent)
     } else {
         CardDefaults.cardColors()
@@ -663,6 +680,16 @@ private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
                         .padding(end = 12.dp, bottom = 12.dp)
                         .size(36.dp),
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
+                )
+            }
+            if (isBPA) {
+                Image(
+                    painter = painterResource(R.drawable.ic_bpa),
+                    contentDescription = "BPA",
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp)
+                        .size(36.dp),
                 )
             }
         }
