@@ -1,6 +1,7 @@
 package com.vida.app.ui
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +86,16 @@ private val CardType.badgeColor: Color
         CardType.CREDIT -> CreditColor
         CardType.PREPAID -> PrepaidColor
     }
+
+// ── Bandec brand gradient ────────────────────────────────────────────────────
+
+private val BandecColor = Color(0xFF8E0509)
+private val BandecGradient = Brush.horizontalGradient(
+    colors = listOf(
+        BandecColor.copy(alpha = 0.10f),
+        BandecColor,
+    ),
+)
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -543,11 +555,25 @@ private fun WalletSummaryCard(wallet: WalletDisplayItem, onClick: () -> Unit) {
 
 @Composable
 private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
+    val isBandec = card.bank.trim().equals("Bandec", ignoreCase = true)
+    val cardModifier = if (isBandec) {
+        Modifier
+            .fillMaxWidth()
+            .background(brush = BandecGradient, shape = RoundedCornerShape(12.dp))
+    } else {
+        Modifier.fillMaxWidth()
+    }
+    val cardColors = if (isBandec) {
+        CardDefaults.cardColors(containerColor = Color.Transparent)
+    } else {
+        CardDefaults.cardColors()
+    }
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = cardModifier,
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = cardColors,
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Column(
@@ -628,7 +654,7 @@ private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
                     )
                 }
             }
-            if (card.bank.trim().equals("Bandec", ignoreCase = true)) {
+            if (isBandec) {
                 Image(
                     painter = painterResource(R.drawable.ic_bandec),
                     contentDescription = "Bandec",
