@@ -88,13 +88,12 @@ private val CardType.badgeColor: Color
         CardType.PREPAID -> PrepaidColor
     }
 
-// ── Bank brand gradients ─────────────────────────────────────────────────────
+// ── Bank brand identity ───────────────────────────────────────────────────────
 
-private val BandecColor = Color(0xFF8E0509)
-private val BandecGradient = Brush.horizontalGradient(
+private val BandecGradient: Brush = Brush.horizontalGradient(
     colors = listOf(
-        BandecColor.copy(alpha = 0.10f),
-        BandecColor,
+        Color(0xFF8E0509).copy(alpha = 0.10f),
+        Color(0xFF8E0509),
     ),
 )
 
@@ -107,6 +106,47 @@ private val BPAGradient: Brush
             BPAColor,
         ),
     )
+
+private val MetropolitanoColor: Color
+    @Composable get() = if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) Color(0xFF91D506) else Color(0xFF3E6304)
+private val MetropolitanoGradient: Brush
+    @Composable get() = Brush.horizontalGradient(
+        colors = listOf(
+            MetropolitanoColor.copy(alpha = 0.10f),
+            MetropolitanoColor,
+        ),
+    )
+
+private data class BankBrand(
+    val logoDrawable: Int?,
+    val logoContentDescription: String,
+    val gradient: Brush? = null,
+    val logoTint: Color? = null,
+)
+
+@Composable
+private fun bankBrandFor(bank: String): BankBrand = when (bank.trim().lowercase()) {
+    "bandec" -> BankBrand(
+        logoDrawable = R.drawable.ic_bandec,
+        logoContentDescription = "Bandec",
+        gradient = BandecGradient,
+        logoTint = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    "bpa" -> BankBrand(
+        logoDrawable = R.drawable.ic_bpa,
+        logoContentDescription = "BPA",
+        gradient = BPAGradient,
+    )
+    "metropolitano" -> BankBrand(
+        logoDrawable = R.drawable.ic_metropolitano,
+        logoContentDescription = "Metropolitano",
+        gradient = MetropolitanoGradient,
+    )
+    else -> BankBrand(
+        logoDrawable = null,
+        logoContentDescription = "",
+    )
+}
 
 // ── Screen ───────────────────────────────────────────────────────────────────
 
@@ -566,21 +606,15 @@ private fun WalletSummaryCard(wallet: WalletDisplayItem, onClick: () -> Unit) {
 
 @Composable
 private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
-    val isBandec = card.bank.trim().equals("Bandec", ignoreCase = true)
-    val isBPA = card.bank.trim().equals("BPA", ignoreCase = true)
-    val brandGradient: Brush? = when {
-        isBandec -> BandecGradient
-        isBPA -> BPAGradient
-        else -> null
-    }
-    val cardModifier = if (brandGradient != null) {
+    val brand = bankBrandFor(card.bank)
+    val cardModifier = if (brand.gradient != null) {
         Modifier
             .fillMaxWidth()
-            .background(brush = brandGradient, shape = RoundedCornerShape(12.dp))
+            .background(brush = brand.gradient, shape = RoundedCornerShape(12.dp))
     } else {
         Modifier.fillMaxWidth()
     }
-    val cardColors = if (brandGradient != null) {
+    val cardColors = if (brand.gradient != null) {
         CardDefaults.cardColors(containerColor = Color.Transparent)
     } else {
         CardDefaults.cardColors()
@@ -671,25 +705,16 @@ private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
                     )
                 }
             }
-            if (isBandec) {
+            brand.logoDrawable?.let { drawable ->
+                val tint = brand.logoTint
                 Image(
-                    painter = painterResource(R.drawable.ic_bandec),
-                    contentDescription = "Bandec",
+                    painter = painterResource(drawable),
+                    contentDescription = brand.logoContentDescription,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 12.dp, bottom = 12.dp)
                         .size(36.dp),
-                    colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.onSurfaceVariant),
-                )
-            }
-            if (isBPA) {
-                Image(
-                    painter = painterResource(R.drawable.ic_bpa),
-                    contentDescription = "BPA",
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(end = 12.dp, bottom = 12.dp)
-                        .size(36.dp),
+                    colorFilter = tint?.let { ColorFilter.tint(it) },
                 )
             }
         }
