@@ -28,13 +28,13 @@ android {
             storeFile = rootProject.file(keystorePath)
             storePassword = (project.findProperty("vida.release.store.password") as String?)
                 ?: System.getenv("VIDA_RELEASE_STORE_PASSWORD")
-                ?: error("VIDA_RELEASE_STORE_PASSWORD not set")
+                ?: ""
             keyAlias = (project.findProperty("vida.release.key.alias") as String?)
                 ?: System.getenv("VIDA_RELEASE_KEY_ALIAS")
                 ?: "vida"
             keyPassword = (project.findProperty("vida.release.key.password") as String?)
                 ?: System.getenv("VIDA_RELEASE_KEY_PASSWORD")
-                ?: error("VIDA_RELEASE_KEY_PASSWORD not set")
+                ?: ""
         }
     }
 
