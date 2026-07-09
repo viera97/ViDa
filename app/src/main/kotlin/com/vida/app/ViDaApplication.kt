@@ -15,5 +15,7 @@ class ViDaApplication : Application() {
         super.onCreate()
         System.loadLibrary("sqlcipher")
         crashHandler.register()
+        // TEMP: test crash for error reporting — remove after testing
+        throw RuntimeException("Test crash — probando reporte de errores")
     }
 }

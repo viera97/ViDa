@@ -2,7 +2,10 @@ package com.vida.core.crash
 
 import android.content.Context
 import android.util.Log
+import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 /**
  * [Thread.UncaughtExceptionHandler] that captures fatal unhandled exceptions,
@@ -17,8 +20,9 @@ import java.io.File
  * crash loops: if the save itself fails, the exception is logged to logcat
  * and the previous handler still runs.
  */
-class CrashHandler(
-    private val context: Context,
+@Singleton
+class CrashHandler @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val deviceInfoProvider: DeviceInfoProvider,
 ) : Thread.UncaughtExceptionHandler {
 

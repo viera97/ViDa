@@ -26,9 +26,12 @@ object CrashModule {
 
     @Provides
     @Singleton
-    fun provideCrashDataStore(
+    fun provideCrashReportStore(
         @ApplicationContext context: Context,
-    ): DataStore<Preferences> = context.crashDataStore
+    ): CrashReportStore {
+        val dataStore: DataStore<Preferences> = context.crashDataStore
+        return CrashReportStore(context, dataStore)
+    }
 
     @Provides
     @Singleton
@@ -38,13 +41,6 @@ object CrashModule {
         packageManager = context.packageManager,
         packageName = context.packageName,
     )
-
-    @Provides
-    @Singleton
-    fun provideCrashReportStore(
-        @ApplicationContext context: Context,
-        dataStore: DataStore<Preferences>,
-    ): CrashReportStore = CrashReportStore(context, dataStore)
 
     @Provides
     @Singleton
