@@ -41,6 +41,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation(libs.hilt.android)
     implementation(libs.hilt.navigation.compose)
+    implementation(libs.okhttp)
     ksp(libs.hilt.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

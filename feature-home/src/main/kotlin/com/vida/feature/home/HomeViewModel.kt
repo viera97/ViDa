@@ -1,5 +1,6 @@
 package com.vida.feature.home
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Card
@@ -23,6 +24,11 @@ import com.vida.domain.usecase.wallet.GetWalletBalance
 import com.vida.domain.usecase.wallet.ListWallets
 import com.vida.core.format.toRelativeDateString
 import com.vida.feature.home.home.formatHomeMoney
+import com.vida.feature.home.update.ApkInstaller
+import com.vida.feature.home.update.ReleaseAsset
+import com.vida.feature.home.update.UpdateCheckResult
+import com.vida.feature.home.update.UpdateManager
+import com.vida.feature.home.update.UpdateUiState
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -30,6 +36,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 
@@ -55,10 +62,21 @@ class HomeViewModel @javax.inject.Inject constructor(
     private val getCurrentRate: GetCurrentRate,
     private val listCurrencyRates: ListCurrencyRates,
     private val categoryRepository: CategoryRepository,
+    private val updateManager: UpdateManager,
+    private val apkInstaller: ApkInstaller,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<HomeUiState>(HomeUiState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private val _updateState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
+    val updateState: StateFlow<UpdateUiState> = _updateState.asStateFlow()
+
+    /**
+     * Holds the asset + htmlUrl from the latest `UpdateAvailable` so the
+     * "Descargar" button can re-enter the download flow without a new check.
+     */
+    private var pendingUpdate: PendingUpdate? = null
 
     /**
      * Trigger flow: any change to expenses, incomes, cards, or stashes causes a
@@ -308,4 +326,104 @@ class HomeViewModel @javax.inject.Inject constructor(
             stash?.name ?: "Ahorro"
         }
     }
+
+    // ── In-app updater ────────────────────────────────────────────────────
+    //
+    // The flow is driven by the user tapping the SystemUpdate IconButton in
+    // the Home TopAppBar. The state machine lives in [UpdateUiState]; the
+    // dialogs (UpdateAvailable / Downloading / ReadyToInstall) are rendered
+    // by HomeScreen based on [updateState], and the transient UpToDate /
+    // Error states are surfaced via a snackbar in the Scaffold.
+
+    /**
+     * Starts a release check. Transitions [updateState] through
+     * `Checking → UpToDate | UpdateAvailable | Error`.
+     */
+    fun checkForUpdate() {
+        viewModelScope.launch {
+            _updateState.value = UpdateUiState.Checking
+            _updateState.value = try {
+                when (val result = updateManager.check()) {
+                    is UpdateCheckResult.UpToDate -> UpdateUiState.UpToDate(result.currentVersion)
+                    is UpdateCheckResult.Available -> {
+                        if (result.asset == null) {
+                            UpdateUiState.Error("La versión $result.version no tiene APK descargable")
+                        } else {
+                            pendingUpdate = PendingUpdate(asset = result.asset, htmlUrl = result.htmlUrl)
+                            UpdateUiState.UpdateAvailable(
+                                version = result.version,
+                                sizeBytes = result.asset.sizeBytes,
+                            )
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                if (t is kotlin.coroutines.cancellation.CancellationException) throw t
+                UpdateUiState.Error(t.message ?: "Error al buscar actualizaciones")
+            }
+        }
+    }
+
+    /**
+     * Downloads the APK for the most recent [UpdateUiState.UpdateAvailable].
+     * No-op if there is no pending update (defensive — should not happen via
+     * the UI).
+     */
+    fun startDownload(context: Context) {
+        val pending = pendingUpdate ?: return
+        viewModelScope.launch {
+            _updateState.value = UpdateUiState.Downloading(progress = 0f)
+            _updateState.value = try {
+                val file = updateManager.download(
+                    asset = pending.asset,
+                    destFile = destFile(context),
+                ) { progress ->
+                    // emitted on IO; hop back to the main thread is not needed
+                    // because StateFlow.value is thread-safe.
+                    _updateState.value = UpdateUiState.Downloading(progress.fraction)
+                }
+                UpdateUiState.ReadyToInstall(file)
+            } catch (t: Throwable) {
+                if (t is kotlin.coroutines.cancellation.CancellationException) throw t
+                UpdateUiState.Error(t.message ?: "Error al descargar la actualización")
+            }
+        }
+    }
+
+    /**
+     * Hands the downloaded file to the system installer. Called from the
+     * "Instalar" button in the [UpdateUiState.ReadyToInstall] dialog.
+     */
+    fun installUpdate(file: File) {
+        viewModelScope.launch {
+            try {
+                apkInstaller.install(file)
+                _updateState.value = UpdateUiState.Idle
+            } catch (t: Throwable) {
+                if (t is kotlin.coroutines.cancellation.CancellationException) throw t
+                _updateState.value = UpdateUiState.Error(t.message ?: "Error al abrir el instalador")
+            }
+        }
+    }
+
+    /**
+     * Resets the update state to [UpdateUiState.Idle]. Called by the UI
+     * after a transient snackbar (UpToDate / Error) dismisses, and when the
+     * user explicitly cancels the update dialog.
+     */
+    fun dismissUpdateDialog() {
+        pendingUpdate = null
+        _updateState.value = UpdateUiState.Idle
+    }
+
+    private fun destFile(context: Context): File {
+        val dir = File(context.cacheDir, "updates")
+        dir.mkdirs()
+        return File(dir, "app-release.apk")
+    }
+
+    private data class PendingUpdate(
+        val asset: ReleaseAsset,
+        val htmlUrl: String,
+    )
 }
