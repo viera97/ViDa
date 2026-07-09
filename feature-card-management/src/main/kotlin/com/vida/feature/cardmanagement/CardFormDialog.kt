@@ -13,8 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -25,20 +23,19 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
 
 /**
  * Form dialog for creating or editing a card.
@@ -49,7 +46,8 @@ import java.time.ZoneId
  * - Last 4 digits ([OutlinedTextField], 4 digits, numeric keyboard)
  * - Card type ([FilterChip] row: Débito / Crédito / Prepago)
  * - Currency ([FilterChip] row: CUP / USD / MLC)
- * - Expiry date ([DatePickerDialog] → formatted as MM/YY)
+ * - Expiry date (year/month picker dialog → formatted as MM/YY; day-of-month is
+ *   ignored since credit-card expiry only specifies month and year)
  * - Note ([OutlinedTextField], optional, max 200 chars)
  * - Balance ([OutlinedTextField], optional, decimal, default 0.00). The user-facing
  *   label is "Balance" because the stored value IS the displayed balance — transfers
@@ -57,20 +55,6 @@ import java.time.ZoneId
  *
  * Save is disabled when [isSaving] is true, bank is blank or whitespace-only,
  * first6 is not exactly 6 digits, or last4 is not exactly 4 digits.
- *
- * @param initialBank Pre-populated bank name (empty for add, existing value for edit).
- * @param initialFirst6 Pre-populated first 6 digits.
- * @param initialLast4 Pre-populated last 4 digits.
- * @param initialType Default [CardType] selection (DEBIT).
- * @param initialCurrency Default [Currency] selection (CUP).
- * @param initialExpiry Pre-populated expiry date (null for add, existing for edit).
- * @param initialNote Pre-populated note.
- * @param balanceStr Pre-populated balance (plain number string, e.g. "1250.50").
- * @param isEdit Whether this is an edit form (affects title and button text).
- * @param isSaving Whether a save operation is in-flight (disables save button).
- * @param onDismiss Called when the dialog is dismissed.
- * @param onSave Called with (bank, first6, last4, type, currency, expiry, note, balanceMinor)
- *   when the user confirms. Note is null when blank.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -106,13 +90,6 @@ fun CardFormDialog(
     var bankDropdownExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
-    val datePickerState = rememberDatePickerState(
-        initialSelectedDateMillis = initialExpiry
-            ?.atStartOfDay(ZoneId.of("UTC"))
-            ?.toInstant()
-            ?.toEpochMilli(),
-    )
-
     // ── Validation ───────────────────────────────────────────────────────────
 
     val isBankBlank = effectiveBank.isBlank()
@@ -128,32 +105,16 @@ fun CardFormDialog(
         cardNumber.length >= 10 && cardNumberValid &&
         !isSaving
 
-    // ── Date picker dialog ───────────────────────────────────────────────────
+    // ── Year/month picker dialog ────────────────────────────────────────────
     if (showDatePicker) {
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val instant = Instant.ofEpochMilli(millis)
-                            val localDate = instant.atZone(ZoneId.of("UTC")).toLocalDate()
-                            expiry = localDate
-                        }
-                        showDatePicker = false
-                    },
-                ) {
-                    Text("Aceptar")
-                }
+        ExpiryYearMonthPickerDialog(
+            initial = initialExpiry,
+            onConfirm = { picked ->
+                expiry = picked
+                showDatePicker = false
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancelar")
-                }
-            },
-        ) {
-            DatePicker(state = datePickerState)
-        }
+            onDismiss = { showDatePicker = false },
+        )
     }
 
     // ── Main dialog ──────────────────────────────────────────────────────────
@@ -167,7 +128,6 @@ fun CardFormDialog(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // Card name
                 OutlinedTextField(
                     value = note,
                     onValueChange = { if (it.length <= 200) note = it },
@@ -175,8 +135,6 @@ fun CardFormDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
-
-                // Card number (full, auto-extracts first 6 + last 4)
                 OutlinedTextField(
                     value = cardNumber,
                     onValueChange = { if (it.length <= 19 && it.all { c -> c.isDigit() }) cardNumber = it },
@@ -187,8 +145,6 @@ fun CardFormDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
-
-                // Bank name — dropdown with predefined options
                 ExposedDropdownMenuBox(
                     expanded = bankDropdownExpanded,
                     onExpandedChange = { bankDropdownExpanded = it },
@@ -232,7 +188,6 @@ fun CardFormDialog(
                     )
                 }
 
-                // Card type — FilterChip row
                 Text("Tipo")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CardType.entries.forEach { cardType ->
@@ -252,7 +207,6 @@ fun CardFormDialog(
                     }
                 }
 
-                // Currency — FilterChip row
                 Text("Moneda")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Currency.entries.forEach { curr ->
@@ -264,14 +218,6 @@ fun CardFormDialog(
                     }
                 }
 
-                // Expiry date — tap to open date picker.
-                // The OutlinedTextField consumes pointer events internally for
-                // cursor positioning, so a `clickable` modifier on its own
-                // modifier chain is not enough. We wrap it in a Box with
-                // `clickable` and set the field to `enabled = false` so it
-                // behaves as a purely visual element; the surrounding Box
-                // intercepts the tap reliably and opens the date picker.
-                // Custom disabled colors preserve the normal enabled look.
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -301,7 +247,6 @@ fun CardFormDialog(
                     )
                 }
 
-                // Balance
                 OutlinedTextField(
                     value = balanceInput,
                     onValueChange = { if (it.all { c -> c.isDigit() || c == '.' }) balanceInput = it },
@@ -338,6 +283,80 @@ fun CardFormDialog(
         },
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancelar")
+            }
+        },
+    )
+}
+
+@Composable
+private fun ExpiryYearMonthPickerDialog(
+    initial: LocalDate?,
+    onConfirm: (LocalDate) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val today = LocalDate.now()
+    var selectedYear by remember { mutableIntStateOf(initial?.year ?: today.year) }
+    var selectedMonth by remember { mutableIntStateOf(initial?.monthValue ?: today.monthValue) }
+
+    val minYear = today.year - 5
+    val maxYear = today.year + 20
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Vencimiento") },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    TextButton(
+                        onClick = { if (selectedYear > minYear) selectedYear-- },
+                        enabled = selectedYear > minYear,
+                    ) {
+                        Text("<")
+                    }
+                    Text(text = selectedYear.toString(), style = MaterialTheme.typography.headlineMedium)
+                    TextButton(
+                        onClick = { if (selectedYear < maxYear) selectedYear++ },
+                        enabled = selectedYear < maxYear,
+                    ) {
+                        Text(">")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                val monthNames = listOf(
+                    "Ene", "Feb", "Mar", "Abr",
+                    "May", "Jun", "Jul", "Ago",
+                    "Sep", "Oct", "Nov", "Dic",
+                )
+                for (r in 0..2) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        for (c in 0..3) {
+                            val m = r * 4 + c + 1
+                            FilterChip(
+                                selected = selectedMonth == m,
+                                onClick = { selectedMonth = m },
+                                label = { Text(monthNames[m - 1]) },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(LocalDate.of(selectedYear, selectedMonth, 1)) }) {
+                Text("Aceptar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
                 Text("Cancelar")
             }
         },
