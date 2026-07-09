@@ -78,19 +78,21 @@ class CrashDialogViewModel @Inject constructor(
     fun send() {
         val report = _state.value.report ?: return
 
-        val intent = Intent(Intent.ACTION_SENDTO).apply {
-            data = android.net.Uri.parse("mailto:")
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "message/rfc822"
             putExtra(Intent.EXTRA_EMAIL, arrayOf(RECIPIENT_EMAIL))
             putExtra(Intent.EXTRA_SUBJECT, emailSubjectFor(report))
             putExtra(Intent.EXTRA_TEXT, emailBodyFor(report))
         }
 
         if (intent.resolveActivity(application.packageManager) != null) {
-            application.startActivity(intent)
+            application.startActivity(
+                Intent.createChooser(intent, "Enviar reporte")
+            )
         } else {
             Toast.makeText(
                 application,
-                "Report saved. Contact support.",
+                "No hay app de correo disponible. Reporte guardado.",
                 Toast.LENGTH_LONG,
             ).show()
         }
