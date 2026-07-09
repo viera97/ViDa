@@ -54,7 +54,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.vida.app.R
+import com.vida.feature.cardmanagement.R as FeatR
 import com.vida.domain.model.CardType
 import com.vida.feature.cardmanagement.CardDisplayItem
 import com.vida.feature.cardmanagement.CardFormDialog
@@ -127,18 +127,18 @@ private data class BankBrand(
 @Composable
 private fun bankBrandFor(bank: String): BankBrand = when (bank.trim().lowercase()) {
     "bandec" -> BankBrand(
-        logoDrawable = R.drawable.ic_bandec,
+        logoDrawable = FeatR.drawable.ic_bandec,
         logoContentDescription = "Bandec",
         gradient = BandecGradient,
         logoTint = MaterialTheme.colorScheme.onSurfaceVariant,
     )
     "bpa" -> BankBrand(
-        logoDrawable = R.drawable.ic_bpa,
+        logoDrawable = FeatR.drawable.ic_bpa,
         logoContentDescription = "BPA",
         gradient = BPAGradient,
     )
     "metropolitano" -> BankBrand(
-        logoDrawable = R.drawable.ic_metropolitano,
+        logoDrawable = FeatR.drawable.ic_metropolitano,
         logoContentDescription = "Metropolitano",
         gradient = MetropolitanoGradient,
     )
