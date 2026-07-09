@@ -86,9 +86,9 @@ class CrashDialogViewModel @Inject constructor(
         }
 
         if (intent.resolveActivity(application.packageManager) != null) {
-            application.startActivity(
-                Intent.createChooser(intent, "Enviar reporte")
-            )
+            val chooser = Intent.createChooser(intent, "Enviar reporte")
+            chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            application.startActivity(chooser)
         } else {
             Toast.makeText(
                 application,
@@ -97,7 +97,11 @@ class CrashDialogViewModel @Inject constructor(
             ).show()
         }
 
-        clearAndDismiss()
+        // Dismiss immediately — clear DataStore in background.
+        viewModelScope.launch {
+            store.clearReport()
+        }
+        _state.value = CrashDialogState()
     }
 
     /**
@@ -105,10 +109,6 @@ class CrashDialogViewModel @Inject constructor(
      * sending anything.
      */
     fun dismiss() {
-        clearAndDismiss()
-    }
-
-    private fun clearAndDismiss() {
         viewModelScope.launch {
             store.clearReport()
             _state.value = CrashDialogState()
