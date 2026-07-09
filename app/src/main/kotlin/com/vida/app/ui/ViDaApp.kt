@@ -51,6 +51,7 @@ import com.vida.feature.incomelist.IncomeDetailScreen
 import com.vida.feature.incomelist.IncomeListScreen
 import com.vida.feature.transfermanagement.TransferFormScreen
 import com.vida.feature.walletmanagement.WalletScreen
+import com.vida.core.crash.CurrentScreenTracker
 import com.vida.app.ui.theme.ThemeMode
 import com.vida.app.ui.theme.ViDaTheme
 import com.vida.app.ui.theme.rememberThemeMode
@@ -106,6 +107,7 @@ fun ViDaApp() {
     }
 
     ViDaTheme(themeMode = themeMode) {
+    Box(modifier = Modifier.fillMaxSize()) {
     Scaffold(
         bottomBar = {
             if (currentRoute?.startsWith(OnboardingRoutes.WIZARD_PREFIX) != true) {
@@ -420,6 +422,10 @@ fun ViDaApp() {
                 }
             }
         }
+    }
+        // Crash/error dialog overlay — shown on top of all screens when a
+        // pending report exists.
+        CrashDialog()
     }
     }
 }
