@@ -11,13 +11,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -30,23 +26,19 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vida.feature.onboarding.OnboardingCopy.WOC_HEADLINE
 import com.vida.feature.onboarding.OnboardingCopy.WOC_PRIMARY
-import com.vida.feature.onboarding.OnboardingCopy.WOC_SEGMENT_CARD
-import com.vida.feature.onboarding.OnboardingCopy.WOC_SEGMENT_WALLET
 import com.vida.feature.onboarding.OnboardingCopy.WOC_SKIP
-import com.vida.feature.onboarding.OnboardingCopy.WOC_SUBHEAD
 import kotlinx.coroutines.launch
 
 /**
- * Wizard step 2 — segmented chooser between "Billetera" and "Tarjeta". The
- * form below swaps based on the active segment. "Saltar" or hardware-back
- * exits the wizard with the completion flag set.
+ * Wizard step 2 — create a wallet. The user fills in the wallet name,
+ * currency, and optional balance, then taps Continuar.
  *
- * @param onContinue Navigate to the get-started step after a successful
- *   wallet or card submission.
+ * "Saltar" or hardware-back exits the wizard with the completion flag set.
+ *
+ * @param onContinue Navigate to the get-started step after a successful wallet submission.
  * @param onSkip Navigate to home with the wizard back stack popped.
  * @param viewModel Injected via Hilt; can be overridden in previews.
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 fun WalletOrCardScreen(
     onContinue: () -> Unit,
@@ -54,7 +46,6 @@ fun WalletOrCardScreen(
     viewModel: WalletOrCardViewModel = hiltViewModel(),
 ) {
     val scope = rememberCoroutineScope()
-    val segment by viewModel.segment.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -74,8 +65,7 @@ fun WalletOrCardScreen(
         }
     }
 
-    val isSaving = uiState is WalletOrCardUiState.SavingWallet ||
-        uiState is WalletOrCardUiState.SavingCard
+    val isSaving = uiState is WalletOrCardUiState.Saving
 
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
@@ -87,70 +77,24 @@ fun WalletOrCardScreen(
                 text = WOC_HEADLINE,
                 style = MaterialTheme.typography.headlineSmall,
             )
-            Text(
-                text = WOC_SUBHEAD,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-
-            SingleChoiceSegmentedButtonRow(
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                WizardSegment.entries.forEachIndexed { index, value ->
-                    SegmentedButton(
-                        selected = segment == value,
-                        onClick = { viewModel.onSegmentChange(value) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = WizardSegment.entries.size,
-                        ),
-                    ) {
-                        Text(
-                            text = if (value == WizardSegment.WALLET) WOC_SEGMENT_WALLET
-                            else WOC_SEGMENT_CARD,
-                        )
-                    }
-                }
-            }
 
             Spacer(modifier = Modifier.padding(top = 8.dp))
 
-            when (segment) {
-                WizardSegment.WALLET -> {
-                    val state = uiState as? WalletOrCardUiState.EditingWallet
-                        ?: WalletOrCardUiState.EditingWallet()
-                    WalletForm(
-                        state = state,
-                        onNameChange = viewModel::onNameChange,
-                        onCurrencyChange = viewModel::onCurrencyChange,
-                        onBalanceChange = viewModel::onBalanceChange,
-                        isSaving = isSaving,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                WizardSegment.CARD -> {
-                    val state = uiState as? WalletOrCardUiState.EditingCard
-                        ?: WalletOrCardUiState.EditingCard()
-                    CardForm(
-                        state = state,
-                        onBankChange = viewModel::onBankChange,
-                        onLast4Change = viewModel::onLast4Change,
-                        onCurrencyChange = viewModel::onCurrencyChange,
-                        onBalanceChange = viewModel::onBalanceChange,
-                        isSaving = isSaving,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            }
+            val state = uiState as? WalletOrCardUiState.Editing
+                ?: WalletOrCardUiState.Editing()
+            WalletForm(
+                state = state,
+                onNameChange = viewModel::onNameChange,
+                onCurrencyChange = viewModel::onCurrencyChange,
+                onBalanceChange = viewModel::onBalanceChange,
+                isSaving = isSaving,
+                modifier = Modifier.fillMaxWidth(),
+            )
 
             Spacer(modifier = Modifier.padding(top = 8.dp))
 
             Button(
-                onClick = {
-                    when (segment) {
-                        WizardSegment.WALLET -> viewModel.submitWallet()
-                        WizardSegment.CARD -> viewModel.submitCard()
-                    }
-                },
+                onClick = { viewModel.submitWallet() },
                 enabled = !isSaving,
                 modifier = Modifier.fillMaxWidth(),
             ) {

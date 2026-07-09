@@ -97,7 +97,7 @@ fun HomeScreen(
     LaunchedEffect(updateState) {
         when (val s = updateState) {
             is UpdateUiState.UpToDate -> {
-                snackbarHostState.showSnackbar("Ya tenés la última versión (v${s.currentVersion})")
+                snackbarHostState.showSnackbar("Ya tienes la última versión (v${s.currentVersion})")
                 viewModel.dismissUpdateDialog()
             }
             is UpdateUiState.Error -> {
@@ -332,6 +332,16 @@ private fun formatBytes(bytes: Long): String {
 @Composable
 private fun InfoDialog(onDismiss: () -> Unit) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val versionName = remember {
+        try {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+                ?: "0.2.0"
+        } catch (_: Exception) {
+            "—"
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -344,7 +354,7 @@ private fun InfoDialog(onDismiss: () -> Unit) {
         },
         title = {
             Text(
-                text = "ViDa",
+                text = "ViDa v$versionName",
                 style = MaterialTheme.typography.headlineSmall,
             )
         },
@@ -363,11 +373,11 @@ private fun InfoDialog(onDismiss: () -> Unit) {
                     Text("t.me/ViDaAppCuba")
                 }
                 Text(
-                    text = "Accede a nuestro perfil de GitHub:",
+                    text = "Accede al repositorio en GitHub:",
                     style = MaterialTheme.typography.bodyMedium,
                 )
-                TextButton(onClick = { uriHandler.openUri("https://github.com/Viera97") }) {
-                    Text("github.com/Viera97")
+                TextButton(onClick = { uriHandler.openUri("https://github.com/Viera97/ViDa") }) {
+                    Text("github.com/Viera97/ViDa")
                 }
             }
         },

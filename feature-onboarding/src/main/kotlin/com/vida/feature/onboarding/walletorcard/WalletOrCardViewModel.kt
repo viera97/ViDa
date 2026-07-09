@@ -2,13 +2,9 @@ package com.vida.feature.onboarding.walletorcard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vida.domain.model.Card
-import com.vida.domain.model.CardNumber
-import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.model.Wallet
-import com.vida.domain.usecase.card.AddCard
 import com.vida.domain.usecase.wallet.UpdateWallet
 import com.vida.feature.onboarding.OnboardingCopy
 import com.vida.feature.onboarding.preferences.WizardPreferences
@@ -21,35 +17,24 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
-import java.time.LocalDate
 import javax.inject.Inject
 
 /**
- * ViewModel for the wallet-or-card middle step. Holds the segmented chooser
- * state plus the active form's field strings, and exposes callbacks for each
- * field mutation.
+ * ViewModel for the create-wallet wizard step. Holds the wallet form state
+ * and exposes callbacks for each field mutation.
  *
- * Submission:
- * - [submitWallet] (T-WIZ-007): validates name + balance, calls
- *   [UpdateWallet] with `id = 0L` (upsert) and the parsed minor-units
- *   balance, then emits `Saved + Continue`. On validation failure sets the
- *   inline error field; on use-case failure emits a [WalletOrCardNavEvent.Snackbar].
- * - [submitCard] (T-WIZ-008): same shape, calls [AddCard] with the locked
- *   defaults (`expirationDate = now+4y`, `first6 = "000000"`, `type = DEBIT`,
- *   `note = ""`). Skeleton until T-WIZ-008.
+ * Submission calls [UpdateWallet] with `id = 0L` (upsert) and the parsed
+ * minor-units balance, then emits `Saved + Continue`. On validation failure
+ * sets inline error fields; on use-case failure emits a snackbar.
  */
 @HiltViewModel
 class WalletOrCardViewModel @Inject constructor(
     private val updateWallet: UpdateWallet,
-    private val addCard: AddCard,
     private val wizardPreferences: WizardPreferences,
 ) : ViewModel() {
 
-    private val _segment = MutableStateFlow(WizardSegment.WALLET)
-    val segment: StateFlow<WizardSegment> = _segment.asStateFlow()
-
     private val _uiState =
-        MutableStateFlow<WalletOrCardUiState>(WalletOrCardUiState.EditingWallet())
+        MutableStateFlow<WalletOrCardUiState>(WalletOrCardUiState.Editing())
     val uiState: StateFlow<WalletOrCardUiState> = _uiState.asStateFlow()
 
     private val _navEvents = Channel<WalletOrCardNavEvent>(Channel.BUFFERED)
@@ -57,44 +42,19 @@ class WalletOrCardViewModel @Inject constructor(
 
     // ── Field mutations ──────────────────────────────────────────────────────
 
-    /** Switches the segmented chooser and rebuilds the editing sub-state with defaults. */
-    fun onSegmentChange(segment: WizardSegment) {
-        _segment.value = segment
-        _uiState.value = when (segment) {
-            WizardSegment.WALLET -> WalletOrCardUiState.EditingWallet()
-            WizardSegment.CARD -> WalletOrCardUiState.EditingCard()
-        }
-    }
-
     fun onNameChange(value: String) {
-        val current = _uiState.value as? WalletOrCardUiState.EditingWallet ?: return
+        val current = _uiState.value as? WalletOrCardUiState.Editing ?: return
         _uiState.value = current.copy(name = value, nameError = null)
     }
 
-    fun onBankChange(value: String) {
-        val current = _uiState.value as? WalletOrCardUiState.EditingCard ?: return
-        _uiState.value = current.copy(bank = value, bankError = null)
-    }
-
-    fun onLast4Change(value: String) {
-        val current = _uiState.value as? WalletOrCardUiState.EditingCard ?: return
-        _uiState.value = current.copy(last4 = value, last4Error = null)
-    }
-
     fun onCurrencyChange(value: Currency) {
-        _uiState.value = when (val current = _uiState.value) {
-            is WalletOrCardUiState.EditingWallet -> current.copy(currency = value, balanceError = null)
-            is WalletOrCardUiState.EditingCard -> current.copy(currency = value, balanceError = null)
-            else -> current
-        }
+        val current = _uiState.value as? WalletOrCardUiState.Editing ?: return
+        _uiState.value = current.copy(currency = value, balanceError = null)
     }
 
     fun onBalanceChange(value: String) {
-        _uiState.value = when (val current = _uiState.value) {
-            is WalletOrCardUiState.EditingWallet -> current.copy(balance = value, balanceError = null)
-            is WalletOrCardUiState.EditingCard -> current.copy(balance = value, balanceError = null)
-            else -> current
-        }
+        val current = _uiState.value as? WalletOrCardUiState.Editing ?: return
+        _uiState.value = current.copy(balance = value, balanceError = null)
     }
 
     // ── Submission ──────────────────────────────────────────────────────────
@@ -104,7 +64,7 @@ class WalletOrCardViewModel @Inject constructor(
      * (the singleton-upsert contract — see [UpdateWallet.invoke]).
      */
     fun submitWallet() {
-        val s = _uiState.value as? WalletOrCardUiState.EditingWallet ?: return
+        val s = _uiState.value as? WalletOrCardUiState.Editing ?: return
         val name = s.name.trim()
         val nameError: String? = when {
             name.isEmpty() -> OnboardingCopy.WOC_ERR_NAME_BLANK
@@ -121,7 +81,7 @@ class WalletOrCardViewModel @Inject constructor(
             return
         }
         viewModelScope.launch {
-            _uiState.value = WalletOrCardUiState.SavingWallet
+            _uiState.value = WalletOrCardUiState.Saving
             try {
                 updateWallet(
                     Wallet(
@@ -135,7 +95,7 @@ class WalletOrCardViewModel @Inject constructor(
                 _navEvents.send(WalletOrCardNavEvent.Continue)
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
-                _uiState.value = WalletOrCardUiState.EditingWallet(
+                _uiState.value = WalletOrCardUiState.Editing(
                     name = s.name,
                     currency = s.currency,
                     balance = s.balance,
@@ -144,72 +104,6 @@ class WalletOrCardViewModel @Inject constructor(
                 _navEvents.send(
                     WalletOrCardNavEvent.Snackbar(
                         t.message ?: "No se pudo guardar la billetera",
-                    ),
-                )
-            }
-        }
-    }
-
-    /**
-     * Validates the card form, then calls [AddCard] with the locked
-     * defaults (per spec: `first6 = "000000"`, `expirationDate = now+4y`,
-     * `type = DEBIT`, `note = ""`). `Card.bank` is required and `last4`
-     * must be exactly 4 digits.
-     */
-    fun submitCard() {
-        val s = _uiState.value as? WalletOrCardUiState.EditingCard ?: return
-        val bank = s.bank.trim()
-        val bankError: String? = if (bank.isEmpty()) OnboardingCopy.WOC_ERR_BANK_BLANK else null
-        val last4Error: String? = when {
-            s.last4.length != 4 -> OnboardingCopy.WOC_ERR_LAST4_FORMAT
-            !s.last4.all { it.isDigit() } -> OnboardingCopy.WOC_ERR_LAST4_FORMAT
-            else -> null
-        }
-        if (bankError != null || last4Error != null) {
-            _uiState.value = s.copy(bankError = bankError, last4Error = last4Error)
-            return
-        }
-        val balanceMinor = parseBalanceMinor(s.balance)
-        if (balanceMinor == null) {
-            _uiState.value = s.copy(balanceError = OnboardingCopy.WOC_ERR_BALANCE_PARSE)
-            return
-        }
-        val number = try {
-            // CardNumber.fromFirst6Last4 enforces the format; safe to call here
-            // because s.last4 is already validated to be exactly 4 digits.
-            CardNumber.fromFirst6Last4("000000", s.last4)
-        } catch (e: IllegalArgumentException) {
-            _uiState.value = s.copy(last4Error = OnboardingCopy.WOC_ERR_LAST4_FORMAT)
-            return
-        }
-        val card = Card(
-            id = 0L,
-            number = number,
-            bank = bank,
-            type = CardType.DEBIT,
-            currency = s.currency,
-            note = "",
-            expirationDate = LocalDate.now().plusYears(4),
-            balance = Money.fromMinorUnits(balanceMinor, s.currency),
-        )
-        viewModelScope.launch {
-            _uiState.value = WalletOrCardUiState.SavingCard
-            try {
-                addCard(card)
-                _uiState.value = WalletOrCardUiState.Saved
-                _navEvents.send(WalletOrCardNavEvent.Continue)
-            } catch (t: Throwable) {
-                if (t is CancellationException) throw t
-                _uiState.value = WalletOrCardUiState.EditingCard(
-                    bank = s.bank,
-                    last4 = s.last4,
-                    currency = s.currency,
-                    balance = s.balance,
-                    bankError = t.message,
-                )
-                _navEvents.send(
-                    WalletOrCardNavEvent.Snackbar(
-                        t.message ?: "No se pudo guardar la tarjeta",
                     ),
                 )
             }
