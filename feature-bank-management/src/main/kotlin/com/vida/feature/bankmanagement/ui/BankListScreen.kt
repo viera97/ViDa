@@ -1,4 +1,4 @@
-package com.vida.feature.cardmanagement
+package com.vida.feature.bankmanagement.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,10 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -38,49 +34,48 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 /**
- * Root composable for the card management screen.
+ * Root composable for the bank management screen.
  *
  * Layout (top to bottom):
- * - TopAppBar ("Tarjetas") with back button
- * - Content area: [LazyColumn] when [CardListUiState.Ready],
- *   centered message for [CardListUiState.Empty],
- *   error message + retry for [CardListUiState.Error],
- *   spinner for [CardListUiState.Loading]
- * - FAB ("+") → opens [CardFormDialog] in add mode
+ * - TopAppBar ("Bancos") with back button
+ * - Content area: [LazyColumn] when [BankListUiState.Ready],
+ *   centered message + "Agregar banco" button for [BankListUiState.Empty],
+ *   error message + retry for [BankListUiState.Error],
+ *   spinner for [BankListUiState.Loading]
+ * - FAB ("+") → opens [BankFormDialog] in add mode
  *
  * Dialog management is owned by this composable via [mutableStateOf];
- * the ViewModel exposes [CardListViewModel.navEvents] for feedback.
+ * the ViewModel exposes [isSaving] and emits [BankNavEvent] for feedback.
  *
  * @param onNavigateBack Back navigation via toolbar arrow.
  * @param viewModel Injected via Hilt.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CardListScreen(
+fun BankListScreen(
     onNavigateBack: () -> Unit,
-    viewModel: CardListViewModel = hiltViewModel(),
+    viewModel: BankListViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
-    val bankNames by viewModel.bankNames.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
     var showAddDialog by remember { mutableStateOf(false) }
-    var editingCard by remember { mutableStateOf<CardDisplayItem?>(null) }
-    var showDeleteConfirm by remember { mutableStateOf<CardDisplayItem?>(null) }
+    var editingBank by remember { mutableStateOf<BankDisplayItem?>(null) }
+    var showDeleteConfirm by remember { mutableStateOf<BankDisplayItem?>(null) }
 
     // Observe one-shot navigation events.
     LaunchedEffect(Unit) {
         viewModel.navEvents.collect { event ->
             when (event) {
-                is CardNavEvent.ShowToast -> {
+                is BankNavEvent.ShowToast -> {
                     snackbarHostState.showSnackbar(event.message)
                 }
 
-                is CardNavEvent.SaveSuccess -> {
+                is BankNavEvent.SaveSuccess -> {
                     showAddDialog = false
-                    editingCard = null
+                    editingBank = null
                 }
             }
         }
@@ -89,15 +84,7 @@ fun CardListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Tarjetas") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Volver",
-                        )
-                    }
-                },
+                title = { Text("Bancos") },
             )
         },
         floatingActionButton = {
@@ -116,7 +103,7 @@ fun CardListScreen(
                 .padding(innerPadding),
         ) {
             when (val state = uiState) {
-                is CardListUiState.Loading -> {
+                is BankListUiState.Loading -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -125,45 +112,49 @@ fun CardListScreen(
                     }
                 }
 
-                is CardListUiState.Ready -> {
+                is BankListUiState.Ready -> {
                     LazyColumn(modifier = Modifier.fillMaxSize()) {
                         items(
-                            items = state.cards,
+                            items = state.banks,
                             key = { it.id },
-                        ) { card ->
-                            CardListItem(
-                                card = card,
-                                onClick = { editingCard = card },
-                                onDelete = { showDeleteConfirm = card },
+                        ) { item ->
+                            BankListItem(
+                                item = item,
+                                onClick = { editingBank = item },
+                                onDeleteClick = { showDeleteConfirm = item },
                             )
                         }
                     }
                 }
 
-                is CardListUiState.Empty -> {
+                is BankListUiState.Empty -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "No hay tarjetas registradas",
+                                text = "No hay bancos",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Las tarjetas que registres aparecerán aquí",
+                                text = "Los bancos que crees aparecerán aquí",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 textAlign = TextAlign.Center,
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(onClick = { showAddDialog = true }) {
+                                Text("Agregar banco")
+                            }
                         }
                     }
                 }
 
-                is CardListUiState.Error -> {
+                is BankListUiState.Error -> {
                     Box(
                         modifier = Modifier.fillMaxSize(),
                         contentAlignment = Alignment.Center,
@@ -186,56 +177,39 @@ fun CardListScreen(
         }
     }
 
-    // ── Add dialog ────────────────────────────────────────────────────────────
+    // ── BankFormDialog (add mode) ─────────────────────────────────────
     if (showAddDialog) {
-        CardFormDialog(
+        BankFormDialog(
             isEdit = false,
             isSaving = isSaving,
-            availableBanks = bankNames,
             onDismiss = { showAddDialog = false },
-            onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
-                viewModel.onAdd(bank, first6, last4, type, currency, expiry, note, balanceMinor)
-            },
+            onSave = { name, color -> viewModel.onAdd(name, color) },
         )
     }
 
-    // ── Edit dialog ───────────────────────────────────────────────────────────
-    editingCard?.let { card ->
-        val balanceInput = card.balance.amount
-            .setScale(2, java.math.RoundingMode.HALF_EVEN)
-            .toPlainString()
-        CardFormDialog(
-            initialBank = card.bank,
-            initialFirst6 = card.first6,
-            initialLast4 = card.last4,
-            initialType = card.type,
-            initialCurrency = card.currency,
-            initialExpiry = card.expiry,
-            initialNote = card.note ?: "",
-            balanceStr = balanceInput,
+    // ── BankFormDialog (edit mode) ────────────────────────────────────
+    editingBank?.let { item ->
+        BankFormDialog(
+            initialName = item.name,
+            initialColor = item.color,
             isEdit = true,
             isSaving = isSaving,
-            availableBanks = bankNames,
-            onDismiss = { editingCard = null },
-            onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
-                viewModel.onEdit(
-                    card.id, bank, first6, last4, type, currency, expiry, note, balanceMinor,
-                )
-            },
+            onDismiss = { editingBank = null },
+            onSave = { name, color -> viewModel.onEdit(item.id, name, color) },
         )
     }
 
-    // ── Delete confirmation AlertDialog ──────────────────────────────────────
-    showDeleteConfirm?.let { card ->
+    // ── Delete confirmation AlertDialog ───────────────────────────────────
+    showDeleteConfirm?.let { item ->
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
-            title = { Text("Eliminar tarjeta") },
-            text = { Text("¿Estás seguro de eliminar la tarjeta de ${card.bank}?") },
+            title = { Text("Eliminar banco") },
+            text = { Text("¿Estás seguro?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showDeleteConfirm = null
-                        viewModel.onDelete(card.id)
+                        viewModel.onDelete(item.id)
                     },
                 ) {
                     Text("Eliminar")

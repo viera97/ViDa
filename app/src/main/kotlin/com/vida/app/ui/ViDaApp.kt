@@ -32,6 +32,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.vida.feature.bankmanagement.ui.BankListScreen
 import com.vida.feature.cardmanagement.CardListScreen
 import com.vida.feature.categorymanagement.CategoryListScreen
 import com.vida.feature.ratemanagement.RateListScreen
@@ -316,7 +317,7 @@ fun ViDaApp() {
                             onThemeModeChange = onThemeModeChange,
                             onNavigateToCategories = { navController.navigate("categories") },
                             onNavigateToCurrencies = { /* future: currencies screen */ },
-                            onNavigateToBanks = { /* future: banks screen */ },
+                            onNavigateToBanks = { navController.navigate("banks") },
                             onNavigateToExportData = { /* future: premium export screen */ },
                             onNavigateToImportData = { /* future: premium import screen */ },
                             onNavigateToSecurity = { /* future: premium security screen */ },
@@ -334,6 +335,17 @@ fun ViDaApp() {
                             onNavigateBack = { navController.popBackStack() },
                             onNavigateToAdd = { /* PR #2: navigate to add category */ },
                             onNavigateToEdit = { /* PR #2: navigate to edit category */ },
+                        )
+                    }
+                    composable(
+                        "banks",
+                        enterTransition = { slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(300)) },
+                        exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
+                    ) {
+                        BankListScreen(
+                            onNavigateBack = { navController.popBackStack() },
                         )
                     }
                     composable(

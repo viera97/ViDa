@@ -7,6 +7,7 @@ import com.vida.domain.model.CardNumber
 import com.vida.domain.model.CardType
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
+import com.vida.domain.usecase.bank.ListBanks
 import com.vida.domain.usecase.card.AddCard
 import com.vida.domain.usecase.card.DeleteCard
 import com.vida.domain.usecase.card.GetCard
@@ -20,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -27,6 +29,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.time.LocalDate
@@ -56,6 +59,7 @@ class CardListViewModel @Inject constructor(
     private val deleteCard: DeleteCard,
     private val getCard: GetCard,
     private val getCardBalance: GetCardBalance,
+    private val listBanks: ListBanks,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CardListUiState>(CardListUiState.Loading)
@@ -70,6 +74,11 @@ class CardListViewModel @Inject constructor(
     /** True while an add/edit operation is in-flight (prevents double-tap). */
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
+
+    /** Reactive list of available bank names for the card form dropdown. */
+    val bankNames: StateFlow<List<String>> = listBanks()
+        .map { banks -> banks.map { it.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Tracks the active card-observation coroutine so [observeCards] can replace it. */
     private var sourceObservationJob: Job? = null

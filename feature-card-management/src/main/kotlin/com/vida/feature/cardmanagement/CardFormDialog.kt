@@ -69,15 +69,15 @@ fun CardFormDialog(
     balanceStr: String = "",
     isEdit: Boolean = false,
     isSaving: Boolean = false,
+    availableBanks: List<String> = emptyList(),
     onDismiss: () -> Unit,
     onSave: (bank: String, first6: String, last4: String, type: CardType, currency: Currency, expiry: LocalDate, note: String?, balanceMinor: Long) -> Unit,
 ) {
-    val banks = listOf("Bandec", "BPA", "Metropolitano")
-    val allBankOptions = banks + "Otros"
-    val isCustom = initialBank.isNotBlank() && initialBank !in banks
+    val allBankOptions = availableBanks + "Otros"
+    val isCustom = initialBank.isNotBlank() && initialBank !in availableBanks
     var selectedBank by remember { mutableStateOf(
         if (isCustom) "Otros"
-        else initialBank.ifEmpty { "Bandec" }
+        else initialBank.ifEmpty { availableBanks.firstOrNull() ?: "Bandec" }
     ) }
     var customBank by remember { mutableStateOf(if (isCustom) initialBank else "") }
     val effectiveBank = if (selectedBank == "Otros") customBank else selectedBank

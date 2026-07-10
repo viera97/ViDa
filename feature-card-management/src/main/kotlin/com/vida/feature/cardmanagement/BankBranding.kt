@@ -68,27 +68,66 @@ internal val MetropolitanoGradient: Brush
  *
  * `@Composable` so theme-aware fields (e.g., BPA's lighter/darker color) can
  * resolve inline against the active MaterialTheme.
+ *
+ * When [colorOverride] is provided it takes precedence over compile-time colors,
+ * allowing the card screen to pass the bank's color from the repository.
+ * When `null` (default), the original compile-time color is used for backward
+ * compatibility with known banks, and an empty brand (no logo, no gradient)
+ * is returned for unknown banks.
+ *
+ * @param bank The bank name to look up (case-insensitive, trimmed).
+ * @param colorOverride Optional ARGB color to use for the gradient instead of
+ *   the compile-time color. When non-null, the gradient is built from this
+ *   single color regardless of the bank name. When null, compile-time colors
+ *   are used for known banks and no gradient for unknown banks.
  */
 @Composable
-internal fun bankBrandFor(bank: String): BankBrand = when (bank.trim().lowercase()) {
-    "bandec" -> BankBrand(
-        logoDrawable = R.drawable.ic_bandec,
-        logoContentDescription = "Bandec",
-        gradient = BandecGradient,
-        logoTint = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    "bpa" -> BankBrand(
-        logoDrawable = R.drawable.ic_bpa,
-        logoContentDescription = "BPA",
-        gradient = BPAGradient,
-    )
-    "metropolitano" -> BankBrand(
-        logoDrawable = R.drawable.ic_metropolitano,
-        logoContentDescription = "Metropolitano",
-        gradient = MetropolitanoGradient,
-    )
-    else -> BankBrand(
-        logoDrawable = null,
-        logoContentDescription = "",
-    )
+internal fun bankBrandFor(
+    bank: String,
+    colorOverride: Int? = null,
+): BankBrand {
+    val normalized = bank.trim().lowercase()
+    val isKnownBank = normalized in setOf("bandec", "bpa", "metropolitano")
+
+    val gradient: Brush? = if (colorOverride != null) {
+        Brush.horizontalGradient(
+            colors = listOf(
+                Color(colorOverride).copy(alpha = 0.10f),
+                Color(colorOverride),
+            ),
+        )
+    } else if (isKnownBank) {
+        when (normalized) {
+            "bandec" -> BandecGradient
+            "bpa" -> BPAGradient
+            "metropolitano" -> MetropolitanoGradient
+            else -> null
+        }
+    } else {
+        null
+    }
+
+    return when (normalized) {
+        "bandec" -> BankBrand(
+            logoDrawable = R.drawable.ic_bandec,
+            logoContentDescription = "Bandec",
+            gradient = gradient,
+            logoTint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        "bpa" -> BankBrand(
+            logoDrawable = R.drawable.ic_bpa,
+            logoContentDescription = "BPA",
+            gradient = gradient,
+        )
+        "metropolitano" -> BankBrand(
+            logoDrawable = R.drawable.ic_metropolitano,
+            logoContentDescription = "Metropolitano",
+            gradient = gradient,
+        )
+        else -> BankBrand(
+            logoDrawable = null,
+            logoContentDescription = "",
+            gradient = gradient,
+        )
+    }
 }
