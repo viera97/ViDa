@@ -8,6 +8,7 @@ import androidx.room.TypeConverters
 import com.vida.data.db.callback.AppDatabaseCallback
 import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.CardDao
+import com.vida.data.db.dao.BankDao
 import com.vida.data.db.dao.CategoryDao
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
@@ -18,6 +19,7 @@ import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
 import com.vida.data.db.dao.TransferDao
 import com.vida.data.db.dao.WalletDao
+import com.vida.data.db.entity.BankEntity
 import com.vida.data.db.entity.CardEntity
 import com.vida.data.db.entity.CategoryEntity
 import com.vida.data.db.entity.CurrencyRateEntity
@@ -34,6 +36,7 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
 
 @Database(
     entities = [
+        BankEntity::class,
         CardEntity::class,
         StashEntity::class,
         WalletEntity::class,
@@ -46,11 +49,12 @@ import net.zetetic.database.sqlcipher.SupportOpenHelperFactory
         RecurringExpenseEntity::class,
         RecurringIncomeEntity::class,
     ],
-    version = 10,
+    version = 11,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun bankDao(): BankDao
     abstract fun cardDao(): CardDao
     abstract fun stashDao(): StashDao
     abstract fun walletDao(): WalletDao
@@ -72,7 +76,7 @@ abstract class AppDatabase : RoomDatabase() {
         ): AppDatabase =
             Room.databaseBuilder(ctx, AppDatabase::class.java, "vida.db")
                 .openHelperFactory(SupportOpenHelperFactory(passphraseProvider.getPassphrase()))
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11)
                 .apply { if (callback != null) addCallback(callback) }
                 .build()
     }

@@ -3,6 +3,7 @@ package com.vida.data.di
 import android.content.Context
 import com.vida.data.db.AppDatabase
 import com.vida.data.db.callback.AppDatabaseCallback
+import com.vida.data.db.dao.BankDao
 import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.CategoryDao
@@ -15,6 +16,7 @@ import com.vida.data.db.dao.RefundDao
 import com.vida.data.db.dao.StashDao
 import com.vida.data.db.dao.TransferDao
 import com.vida.data.db.dao.WalletDao
+import com.vida.data.mapper.BankMapper
 import com.vida.data.mapper.CardMapper
 import com.vida.data.mapper.CategoryMapper
 import com.vida.data.mapper.CurrencyRateMapper
@@ -29,7 +31,11 @@ import com.vida.data.mapper.WalletMapper
 import com.vida.data.repository.TransferOrchestrator
 import com.vida.data.security.DevPassphraseProvider
 import com.vida.data.security.PassphraseProvider
+import com.vida.domain.repository.BankRepository
 import com.vida.domain.repository.CategoryRepository
+import com.vida.domain.usecase.bank.GetBankColorByName
+import com.vida.domain.usecase.bank.ListBanks
+import com.vida.domain.usecase.bank.SeedDefaultBanks
 import com.vida.domain.usecase.category.SeedDefaultCategories
 import dagger.Module
 import dagger.Provides
@@ -52,11 +58,29 @@ object DatabaseModule {
 
     @Provides
     @Singleton
+    fun provideSeedDefaultBanks(repo: BankRepository): SeedDefaultBanks =
+        SeedDefaultBanks(repo)
+
+    @Provides
+    @Singleton
+    fun provideGetBankColorByName(repo: BankRepository): GetBankColorByName =
+        GetBankColorByName(repo)
+
+    @Provides
+    @Singleton
+    fun provideListBanks(repo: BankRepository): ListBanks =
+        ListBanks(repo)
+
+    @Provides
+    @Singleton
     fun provideDatabase(
         @ApplicationContext ctx: Context,
         passphraseProvider: PassphraseProvider,
         callback: AppDatabaseCallback,
     ): AppDatabase = AppDatabase.create(ctx, passphraseProvider, callback)
+
+    @Provides
+    fun provideBankDao(db: AppDatabase): BankDao = db.bankDao()
 
     @Provides
     fun provideCardDao(db: AppDatabase): CardDao = db.cardDao()
@@ -115,6 +139,9 @@ object DatabaseModule {
 
     @Provides
     fun provideWalletMapper(): WalletMapper = WalletMapper
+
+    @Provides
+    fun provideBankMapper(): BankMapper = BankMapper
 
     @Provides
     fun provideCategoryMapper(): CategoryMapper = CategoryMapper
