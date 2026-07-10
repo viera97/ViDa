@@ -18,8 +18,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Brightness2
 import androidx.compose.material.icons.filled.BrightnessHigh
 import androidx.compose.material.icons.filled.BrightnessMedium
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.CurrencyExchange
 import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Star
@@ -46,6 +49,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.vida.app.BuildConfig
 import com.vida.app.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,6 +59,12 @@ fun SettingsScreen(
     onThemeModeChange: (ThemeMode) -> Unit = {},
     onNavigateBack: () -> Unit = {},
     onNavigateToCategories: () -> Unit = {},
+    onNavigateToCurrencies: () -> Unit = {},
+    onNavigateToBanks: () -> Unit = {},
+    onNavigateToExportData: () -> Unit = {},
+    onNavigateToImportData: () -> Unit = {},
+    onNavigateToSecurity: () -> Unit = {},
+    onNavigateToTransfermovil: () -> Unit = {},
 ) {
     var showProDialog by remember { mutableStateOf(false) }
 
@@ -130,31 +140,78 @@ fun SettingsScreen(
             )
 
             SettingsOption(
-                icon = Icons.Default.Star,
-                title = "ViDa Pro",
-                description = "Funciones premium y sin límites",
-                onClick = { showProDialog = true },
+                icon = Icons.Default.CurrencyExchange,
+                title = "Monedas",
+                description = "Administrar monedas del sistema",
+                onClick = onNavigateToCurrencies,
+            )
+
+            SettingsOption(
+                icon = Icons.Default.AccountBalance,
+                title = "Bancos",
+                description = "Administrar bancos para tarjetas",
+                onClick = onNavigateToBanks,
+            )
+
+            // ── Premium section ────────────────────────────────────────────
+            Text(
+                text = "Premium",
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp),
+            )
+
+            SettingsOption(
+                icon = Icons.Default.FileUpload,
+                title = "Exportar datos",
+                description = "Descargar respaldo de tus finanzas",
+                onClick = {
+                    if (BuildConfig.IS_PREMIUM) {
+                        onNavigateToExportData()
+                    } else {
+                        showProDialog = true
+                    }
+                },
             )
 
             SettingsOption(
                 icon = Icons.Default.FileDownload,
-                title = "Exportar datos",
-                description = "Descargar respaldo de tus finanzas — ViDa Pro",
-                onClick = { showProDialog = true },
+                title = "Importar datos",
+                description = "Restaurar respaldo de tus finanzas",
+                onClick = {
+                    if (BuildConfig.IS_PREMIUM) {
+                        onNavigateToImportData()
+                    } else {
+                        showProDialog = true
+                    }
+                },
             )
 
             SettingsOption(
                 icon = Icons.Default.Lock,
                 title = "Seguridad",
-                description = "PIN, huella y privacidad — ViDa Pro",
-                onClick = { showProDialog = true },
+                description = "PIN, huella y privacidad",
+                onClick = {
+                    if (BuildConfig.IS_PREMIUM) {
+                        onNavigateToSecurity()
+                    } else {
+                        showProDialog = true
+                    }
+                },
             )
 
             SettingsOption(
                 icon = Icons.Default.PhoneAndroid,
                 title = "Transfermóvil",
-                description = "Importación automática de gastos — ViDa Pro",
-                onClick = { showProDialog = true },
+                description = "Importación automática de gastos",
+                onClick = {
+                    if (BuildConfig.IS_PREMIUM) {
+                        onNavigateToTransfermovil()
+                    } else {
+                        showProDialog = true
+                    }
+                },
             )
 
             // Future settings options go here

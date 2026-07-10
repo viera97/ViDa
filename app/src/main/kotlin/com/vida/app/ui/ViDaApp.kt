@@ -315,6 +315,12 @@ fun ViDaApp() {
                             themeMode = themeMode,
                             onThemeModeChange = onThemeModeChange,
                             onNavigateToCategories = { navController.navigate("categories") },
+                            onNavigateToCurrencies = { /* future: currencies screen */ },
+                            onNavigateToBanks = { /* future: banks screen */ },
+                            onNavigateToExportData = { /* future: premium export screen */ },
+                            onNavigateToImportData = { /* future: premium import screen */ },
+                            onNavigateToSecurity = { /* future: premium security screen */ },
+                            onNavigateToTransfermovil = { /* future: premium transfermovil screen */ },
                         )
                     }
                     composable(

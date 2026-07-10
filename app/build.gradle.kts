@@ -13,6 +13,22 @@ android {
     namespace = "com.vida.app"
     compileSdk = 36
 
+    flavorDimensions += "tier"
+
+    productFlavors {
+        create("free") {
+            dimension = "tier"
+            applicationIdSuffix = ".free"
+            buildConfigField("boolean", "IS_PREMIUM", "false")
+        }
+        create("premium") {
+            dimension = "tier"
+            applicationIdSuffix = ""
+            buildConfigField("boolean", "IS_PREMIUM", "true")
+            // app_name is in app/src/premium/res/values/strings.xml
+        }
+    }
+
     // Signing config for release builds. Reads from gradle.properties
     // (project.findProperty) or environment variables. Never commits secrets.
     // Required env vars (or gradle properties) for `./gradlew assembleRelease`:
@@ -59,6 +75,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {
@@ -75,6 +92,7 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":domain"))
     implementation(project(":data"))
+    add("premiumImplementation", project(":feature-premium"))
     implementation(project(":feature-home"))
     implementation(project(":feature-expense"))
     implementation(project(":feature-expense-list"))
