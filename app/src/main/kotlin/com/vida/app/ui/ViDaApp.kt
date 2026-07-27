@@ -146,6 +146,7 @@ fun ViDaApp() {
                         onClick = {
                             val targetIdx = tabOrder.indexOf("home")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
+                                .let { if (it < 0) 0 else it }
                             slideFromRight = targetIdx > currentIdx
                             navController.navigate("home") {
                                 popUpTo("home") { inclusive = false }
@@ -164,6 +165,7 @@ fun ViDaApp() {
                         onClick = {
                             val targetIdx = tabOrder.indexOf("fuentes")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
+                                .let { if (it < 0) 0 else it }
                             slideFromRight = targetIdx > currentIdx
                             navController.navigate("fuentes") {
                                 popUpTo("home") { inclusive = false }
@@ -182,6 +184,7 @@ fun ViDaApp() {
                         onClick = {
                             val targetIdx = tabOrder.indexOf("rates")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
+                                .let { if (it < 0) 0 else it }
                             slideFromRight = targetIdx > currentIdx
                             navController.navigate("rates") {
                                 popUpTo("home") { inclusive = false }
@@ -200,6 +203,7 @@ fun ViDaApp() {
                         onClick = {
                             val targetIdx = tabOrder.indexOf("recurring")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
+                                .let { if (it < 0) 0 else it }
                             slideFromRight = targetIdx > currentIdx
                             navController.navigate("recurring") {
                                 popUpTo("home") { inclusive = false }
@@ -218,6 +222,7 @@ fun ViDaApp() {
                         onClick = {
                             val targetIdx = tabOrder.indexOf("settings")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
+                                .let { if (it < 0) 0 else it }
                             slideFromRight = targetIdx > currentIdx
                             navController.navigate("settings") {
                                 popUpTo("home") { inclusive = false }
