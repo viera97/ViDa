@@ -56,7 +56,7 @@ class IncomeDetailViewModelTest {
         listWallets = mockk()
 
         coEvery { getIncome(1L) } returns sampleIncome()
-        every { listWallets() } returns flowOf(listOf(Wallet(id = 1L, name = "Efectivo", currency = Currency.CUP)))
+        every { listWallets() } returns flowOf(listOf(Wallet(id = 1L, name = "Efectivo", currency = "CUP")))
         every { listCards() } returns flowOf(emptyList())
         every { listStashes() } returns flowOf(emptyList())
     }

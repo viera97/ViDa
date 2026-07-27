@@ -2,26 +2,24 @@ package com.vida.feature.recurringexpensemanagement
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -33,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.vida.domain.model.Card
 import com.vida.domain.model.Category
 import com.vida.domain.model.Currency
@@ -57,12 +54,12 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  *
  * Fields (10 in a scrollable Column):
  * - amount: [OutlinedTextField] with real-time BigDecimal validation
- * - currency: [FilterChip] row (CUP / USD / MLC)
+ * - currency: [ExposedDropdownMenuBox] (dynamic from user's currency list)
  * - categoryId: dropdown via [Category] list
  * - sourceType + sourceId: combined picker via bottom sheet (wallets + cards only;
  *   stashes are intentionally not allowed for recurring expenses)
  * - description: [OutlinedTextField]
- * - frequency: [FilterChip] row (DAILY / WEEKLY / MONTHLY / YEARLY)
+ * - frequency: [ExposedDropdownMenuBox] (Diario / Semanal / Mensual / Anual)
  * - startDate: [DatePickerDialog] (default today)
  * - endDate: [DatePickerDialog] (optional)
  * - isActive: [Switch] toggle (default ON)
@@ -70,12 +67,12 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  * Save is disabled when [isSaving] is true or validation fails.
  *
  * @param initialAmount Pre-populated amount string (empty for add).
- * @param initialCurrency Default [Currency] selection.
+ * @param initialCurrencyCode Default currency code string.
  * @param initialCategoryId Pre-selected category id (null = none).
  * @param initialSourceType Default [SourceType] selection.
  * @param initialSourceId Pre-selected source id (null = none).
  * @param initialDescription Pre-populated description (empty for add).
- * @param initialFrequency Pre-selected frequency (null = none).
+ * @param initialFrequency Pre-selected frequency (default MONTHLY).
  * @param initialStartDate Start date for the template.
  * @param initialEndDate Optional end date.
  * @param initialIsActive Whether the template starts active.
@@ -84,20 +81,21 @@ private val dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
  * @param categories Available categories for the dropdown.
  * @param cards Available cards for the source dropdown.
  * @param stashes Available stashes for the source dropdown.
+ * @param availableCurrencies Currency codes for the currency dropdown.
  * @param onDismiss Called when the dialog is dismissed.
  * @param onSave Called with the constructed [RecurringExpense] when the user confirms.
  *               (id=0, lastGeneratedDate=null — caller merges for edits.)
  */
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RecurringFormDialog(
     initialAmount: String = "",
-    initialCurrency: Currency = Currency.CUP,
+    initialCurrencyCode: String = "CUP",
     initialCategoryId: Long? = null,
     initialSourceType: SourceType = SourceType.WALLET,
     initialSourceId: Long? = null,
     initialDescription: String = "",
-    initialFrequency: Frequency? = null,
+    initialFrequency: Frequency = Frequency.MONTHLY,
     initialStartDate: LocalDate = LocalDate.now(),
     initialEndDate: LocalDate? = null,
     initialIsActive: Boolean = true,
@@ -113,7 +111,9 @@ fun RecurringFormDialog(
     // ── Local form state ──────────────────────────────────────────────────────
 
     var amount by remember { mutableStateOf(initialAmount) }
-    var currency by remember { mutableStateOf(initialCurrency) }
+    var selectedCurrencyCode by remember {
+        mutableStateOf(initialCurrencyCode.ifBlank { "CUP" })
+    }
     var selectedCategoryId by remember { mutableStateOf(initialCategoryId) }
     var sourceType by remember { mutableStateOf(initialSourceType) }
     var selectedSourceId by remember { mutableStateOf(initialSourceId) }
@@ -127,6 +127,7 @@ fun RecurringFormDialog(
 
     var categoryExpanded by remember { mutableStateOf(false) }
     var sourceExpanded by remember { mutableStateOf(false) }
+    var frequencyExpanded by remember { mutableStateOf(false) }
     var showStartDatePicker by remember { mutableStateOf(false) }
     var showEndDatePicker by remember { mutableStateOf(false) }
 
@@ -168,13 +169,12 @@ fun RecurringFormDialog(
     }
     val isCurrencyLocked = selectedSource != null
     LaunchedEffect(selectedSource?.currency) {
-        selectedSource?.currency?.let { currency = it }
+        selectedSource?.currency?.let { selectedCurrencyCode = it }
     }
 
     val isSaveEnabled = isAmountValid
         && isDescriptionValid
         && selectedCategoryId != null
-        && frequency != null
         && isSourceIdValid
         && endDateError == null
         && !isSaving
@@ -183,16 +183,16 @@ fun RecurringFormDialog(
 
     fun buildExpense(): RecurringExpense {
         val parsedAmount = amountParseResult.getOrThrow()
-        val money = Money(parsedAmount, currency)
+        val money = Money(parsedAmount, Currency.fromCode(selectedCurrencyCode))
         return RecurringExpense(
             id = 0L,
             amount = money,
-            currency = currency,
+            currency = selectedCurrencyCode,
             categoryId = selectedCategoryId ?: error("category not selected"),
             sourceType = sourceType,
             sourceId = selectedSourceId,
             description = description.trim(),
-            frequency = frequency ?: error("frequency not selected"),
+            frequency = frequency,
             startDate = startDate,
             endDate = endDate,
             lastGeneratedDate = null,
@@ -272,18 +272,8 @@ fun RecurringFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // ── Currency ────────────────────────────────────────────
-                Text("Moneda", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = currency == curr,
-                            onClick = { currency = curr },
-                            enabled = !isCurrencyLocked,
-                            label = { Text(curr.code) },
-                        )
-                    }
-                }
+                // Currency is always locked to the selected source's currency
+                // (wallet or card). No standalone dropdown needed — hidden from UI.
 
                 // ── Category ────────────────────────────────────────────
                 val selectedCategory = remember(categories, selectedCategoryId) {
@@ -338,19 +328,19 @@ fun RecurringFormDialog(
                 )
 
                 // ── Frequency ───────────────────────────────────────────
-                Text("Frecuencia", style = MaterialTheme.typography.bodySmall)
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Frequency.entries.forEach { freq ->
-                        FilterChip(
-                            selected = frequency == freq,
-                            onClick = { frequency = freq },
-                            label = { Text(freq.toSpanishLabel()) },
-                        )
-                    }
+                RecurringFrequencySelector(
+                    selectedFrequency = frequency,
+                    onShowSheet = { frequencyExpanded = true },
+                )
+                if (frequencyExpanded) {
+                    RecurringFrequencySheet(
+                        selectedFrequency = frequency,
+                        onDismiss = { frequencyExpanded = false },
+                        onFrequencySelected = { selected ->
+                            frequency = selected
+                            frequencyExpanded = false
+                        },
+                    )
                 }
 
                 // ── Start date ──────────────────────────────────────────
@@ -437,10 +427,4 @@ private fun Long.toLocalDate(): LocalDate =
 
 // ── Display helpers ───────────────────────────────────────────────────────────
 
-/** Spanish label for [Frequency] enum values. */
-private fun Frequency.toSpanishLabel(): String = when (this) {
-    Frequency.DAILY -> "Diario"
-    Frequency.WEEKLY -> "Semanal"
-    Frequency.MONTHLY -> "Mensual"
-    Frequency.YEARLY -> "Anual"
-}
+// Frequency.toSpanishLabel() is defined in RecurringFrequencySelector.kt

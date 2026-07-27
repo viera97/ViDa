@@ -15,7 +15,7 @@ class RecurringExpenseTest {
     fun `valid construction succeeds for monthly recurring`() {
         val r = RecurringExpense(
             amount = Money(BigDecimal("2000"), Currency.CUP),
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.WALLET,
             description = "Alquiler",
@@ -33,7 +33,7 @@ class RecurringExpenseTest {
     fun `valid construction succeeds with explicit end date`() {
         val r = RecurringExpense(
             amount = oneCup,
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.CARD,
             sourceId = 5L,
@@ -55,7 +55,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = Money.ZERO_CUP,
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 1L,
                 sourceType = SourceType.WALLET,
                 description = "X",
@@ -66,7 +66,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = Money(BigDecimal("-1"), Currency.CUP),
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 1L,
                 sourceType = SourceType.WALLET,
                 description = "X",
@@ -81,7 +81,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = oneCup,
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 1L,
                 sourceType = SourceType.WALLET,
                 description = "  ",
@@ -96,7 +96,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = oneCup,
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 0L,
                 sourceType = SourceType.WALLET,
                 description = "X",
@@ -111,7 +111,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = oneCup,
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 1L,
                 sourceType = SourceType.WALLET,
                 description = "X",
@@ -126,7 +126,7 @@ class RecurringExpenseTest {
     fun `endDate equal to startDate is accepted`() {
         val r = RecurringExpense(
             amount = oneCup,
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.WALLET,
             description = "X",
@@ -144,7 +144,7 @@ class RecurringExpenseTest {
         // RecurringExpense must accept it.
         val r = RecurringExpense(
             amount = oneCup,
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.WALLET,
             sourceId = 5L,
@@ -160,7 +160,7 @@ class RecurringExpenseTest {
         assertThrows(IllegalArgumentException::class.java) {
             RecurringExpense(
                 amount = oneCup,
-                currency = Currency.CUP,
+                currency = "CUP",
                 categoryId = 1L,
                 sourceType = SourceType.CARD,
                 sourceId = null,

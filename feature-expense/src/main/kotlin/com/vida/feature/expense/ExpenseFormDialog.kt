@@ -203,15 +203,8 @@ fun ExpenseFormDialog(
 
                         AmountSection(
                             amount = ready.form.amount,
-                            currency = ready.form.currency,
                             amountError = ready.validationErrors["amount"],
                             onAmountChanged = viewModel::onAmountChanged,
-                            // Currency chips stay enabled even when a source is
-                            // selected — the user must explicitly resolve any
-                            // mismatch between their chosen currency and the
-                            // source's currency. submit() blocks the save with
-                            // an error if they don't match.
-                            onCurrencyChanged = viewModel::onCurrencyChanged,
                         )
                         DescriptionInput(
                             value = ready.form.description,
@@ -335,4 +328,6 @@ fun ExpenseFormDialog(
             )
         }
     }
+
+    // Currency is auto-determined by the source — no standalone currency picker.
 }

@@ -19,7 +19,7 @@ class RecurringExpenseMapperTest {
         val recurring = RecurringExpense(
             id = 10L,
             amount = Money.of("50.00", Currency.CUP),
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.CARD,
             sourceId = 7L,
@@ -46,7 +46,7 @@ class RecurringExpenseMapperTest {
         val recurring = RecurringExpense(
             id = 0L,
             amount = Money.of("30.00", Currency.USD),
-            currency = Currency.USD,
+            currency = "USD",
             categoryId = 2L,
             sourceType = SourceType.WALLET,
             sourceId = null,
@@ -74,7 +74,7 @@ class RecurringExpenseMapperTest {
         val recurring = RecurringExpense(
             id = 5L,
             amount = Money.of("100.00", Currency.MLC),
-            currency = Currency.MLC,
+            currency = "MLC",
             categoryId = 3L,
             sourceType = SourceType.STASH,
             sourceId = 4L,
@@ -100,8 +100,8 @@ class RecurringExpenseMapperTest {
             val recurring = RecurringExpense(
                 id = 0L,
                 amount = Money.of("10.00", Currency.CUP),
-                currency = Currency.CUP,
-                categoryId = 1L,
+            currency = "CUP",
+            categoryId = 1L,
                 sourceType = SourceType.WALLET,
                 sourceId = null,
                 description = "test",
@@ -122,7 +122,7 @@ class RecurringExpenseMapperTest {
         val recurring = RecurringExpense(
             id = 0L,
             amount = Money.of("42.50", Currency.USD),
-            currency = Currency.USD,
+            currency = "USD",
             categoryId = 1L,
             sourceType = SourceType.WALLET,
             sourceId = null,
@@ -144,7 +144,7 @@ class RecurringExpenseMapperTest {
         val recurring = RecurringExpense(
             id = 0L,
             amount = Money.of("10.00", Currency.CUP),
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 1L,
             sourceType = SourceType.WALLET,
             sourceId = null,

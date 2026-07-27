@@ -13,10 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -34,7 +31,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.CardType
-import com.vida.domain.model.Currency
 import java.time.LocalDate
 
 /**
@@ -45,7 +41,7 @@ import java.time.LocalDate
  * - First 6 digits ([OutlinedTextField], 6 digits, numeric keyboard)
  * - Last 4 digits ([OutlinedTextField], 4 digits, numeric keyboard)
  * - Card type ([FilterChip] row: Débito / Crédito / Prepago)
- * - Currency ([FilterChip] row: CUP / USD / MLC)
+ * - Currency ([ExposedDropdownMenuBox], required, from user's currency list)
  * - Expiry date (year/month picker dialog → formatted as MM/YY; day-of-month is
  *   ignored since credit-card expiry only specifies month and year)
  * - Note ([OutlinedTextField], optional, max 200 chars)
@@ -54,7 +50,8 @@ import java.time.LocalDate
  *   no longer auto-update it (Option B).
  *
  * Save is disabled when [isSaving] is true, bank is blank or whitespace-only,
- * first6 is not exactly 6 digits, or last4 is not exactly 4 digits.
+ * first6 is not exactly 6 digits, or last4 is not exactly 4 digits, or no currency
+ * is selected, or the saved currency code is orphaned (no longer in the user's list).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,36 +60,39 @@ fun CardFormDialog(
     initialFirst6: String = "",
     initialLast4: String = "",
     initialType: CardType = CardType.DEBIT,
-    initialCurrency: Currency = Currency.CUP,
+    initialCurrency: String = "CUP",
     initialExpiry: LocalDate? = null,
     initialNote: String = "",
     balanceStr: String = "",
     isEdit: Boolean = false,
     isSaving: Boolean = false,
     availableBanks: List<String> = emptyList(),
+    availableCurrencies: List<String> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (bank: String, first6: String, last4: String, type: CardType, currency: Currency, expiry: LocalDate, note: String?, balanceMinor: Long) -> Unit,
+    onSave: (bank: String, first6: String, last4: String, type: CardType, currency: String, expiry: LocalDate, note: String?, balanceMinor: Long) -> Unit,
 ) {
-    val allBankOptions = availableBanks + "Otros"
-    val isCustom = initialBank.isNotBlank() && initialBank !in availableBanks
     var selectedBank by remember { mutableStateOf(
-        if (isCustom) "Otros"
-        else initialBank.ifEmpty { availableBanks.firstOrNull() ?: "Bandec" }
+        initialBank.ifEmpty { availableBanks.firstOrNull() ?: "" }
     ) }
-    var customBank by remember { mutableStateOf(if (isCustom) initialBank else "") }
-    val effectiveBank = if (selectedBank == "Otros") customBank else selectedBank
     var cardNumber by remember { mutableStateOf(initialFirst6 + initialLast4) }
     var type by remember { mutableStateOf(initialType) }
-    var currency by remember { mutableStateOf(initialCurrency) }
+    var selectedCurrency by remember { mutableStateOf(
+        if (initialCurrency.isNotEmpty()) {
+            initialCurrency
+        } else {
+            availableCurrencies.firstOrNull() ?: "CUP"
+        }
+    ) }
     var expiry by remember { mutableStateOf(initialExpiry) }
     var note by remember { mutableStateOf(initialNote) }
     var balanceInput by remember { mutableStateOf(balanceStr) }
     var bankDropdownExpanded by remember { mutableStateOf(false) }
+    var currencyDropdownExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     // ── Validation ───────────────────────────────────────────────────────────
 
-    val isBankBlank = effectiveBank.isBlank()
+    val isBankBlank = selectedBank.isBlank()
     val cardNumberValid = cardNumber.all { it.isDigit() }
     val cardNumberError: String? = when {
         cardNumber.isNotEmpty() && !cardNumberValid -> "Solo dígitos"
@@ -100,9 +100,13 @@ fun CardFormDialog(
         else -> null
     }
 
+    val isOrphanCurrency = isEdit && initialCurrency.isNotBlank() && initialCurrency !in availableCurrencies
+
     val isSaveEnabled = !isBankBlank &&
-        effectiveBank.length <= 100 &&
+        selectedBank.length <= 100 &&
         cardNumber.length >= 10 && cardNumberValid &&
+        selectedCurrency.isNotBlank() &&
+        !isOrphanCurrency &&
         !isSaving
 
     // ── Year/month picker dialog ────────────────────────────────────────────
@@ -145,48 +149,11 @@ fun CardFormDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     modifier = Modifier.fillMaxWidth(),
                 )
-                ExposedDropdownMenuBox(
-                    expanded = bankDropdownExpanded,
-                    onExpandedChange = { bankDropdownExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = selectedBank.ifEmpty { "Otros" },
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Banco") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = bankDropdownExpanded) },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                    )
-                    ExposedDropdownMenu(
-                        expanded = bankDropdownExpanded,
-                        onDismissRequest = { bankDropdownExpanded = false },
-                    ) {
-                        allBankOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = { Text(option) },
-                                onClick = {
-                                    selectedBank = option
-                                    bankDropdownExpanded = false
-                                },
-                            )
-                        }
-                    }
-                }
-                if (selectedBank == "Otros") {
-                    OutlinedTextField(
-                        value = customBank,
-                        onValueChange = { if (it.length <= 100) customBank = it },
-                        label = { Text("Nombre de tarjeta") },
-                        isError = effectiveBank.isBlank() && customBank.isNotEmpty(),
-                        supportingText = if (effectiveBank.isBlank() && customBank.isNotEmpty()) {
-                            { Text("El nombre es obligatorio") }
-                        } else null,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
+                // Bank — trigger field
+                CardBankSelector(
+                    selectedBank = selectedBank,
+                    onShowSheet = { bankDropdownExpanded = true },
+                )
 
                 Text("Tipo")
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -207,16 +174,13 @@ fun CardFormDialog(
                     }
                 }
 
-                Text("Moneda")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = currency == curr,
-                            onClick = { currency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
-                }
+                // Currency — trigger field
+                CardCurrencySelector(
+                    selectedCurrencyCode = selectedCurrency,
+                    isError = isOrphanCurrency,
+                    errorMessage = if (isOrphanCurrency) "La moneda asignada ya no existe. Seleccione otra." else null,
+                    onShowSheet = { currencyDropdownExpanded = true },
+                )
 
                 Box(
                     modifier = Modifier
@@ -266,11 +230,11 @@ fun CardFormDialog(
                     val extractedFirst6 = cardNumber.take(6)
                     val extractedLast4 = cardNumber.takeLast(4)
                     onSave(
-                        effectiveBank.trim(),
+                        selectedBank.trim(),
                         extractedFirst6,
                         extractedLast4,
                         type,
-                        currency,
+                        selectedCurrency,
                         safeExpiry,
                         safeNote,
                         minorUnits,
@@ -287,6 +251,32 @@ fun CardFormDialog(
             }
         },
     )
+
+    // Bank bottom sheet — rendered after the AlertDialog so it overlays correctly.
+    if (bankDropdownExpanded) {
+        CardBankPickerSheet(
+            availableBanks = availableBanks,
+            selectedBank = selectedBank,
+            onDismiss = { bankDropdownExpanded = false },
+            onBankSelected = { bank ->
+                selectedBank = bank
+                bankDropdownExpanded = false
+            },
+        )
+    }
+
+    // Currency bottom sheet — rendered after the AlertDialog so it overlays correctly.
+    if (currencyDropdownExpanded) {
+        CardCurrencyPickerSheet(
+            availableCurrencies = availableCurrencies,
+            selectedCurrencyCode = selectedCurrency,
+            onDismiss = { currencyDropdownExpanded = false },
+            onCurrencySelected = { code ->
+                selectedCurrency = code
+                currencyDropdownExpanded = false
+            },
+        )
+    }
 }
 
 @Composable

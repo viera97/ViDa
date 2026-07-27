@@ -63,6 +63,7 @@ fun CardListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val bankNames by viewModel.bankNames.collectAsStateWithLifecycle()
+    val currencyCodes by viewModel.currencyCodes.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
@@ -192,6 +193,7 @@ fun CardListScreen(
             isEdit = false,
             isSaving = isSaving,
             availableBanks = bankNames,
+            availableCurrencies = currencyCodes,
             onDismiss = { showAddDialog = false },
             onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
                 viewModel.onAdd(bank, first6, last4, type, currency, expiry, note, balanceMinor)
@@ -216,6 +218,7 @@ fun CardListScreen(
             isEdit = true,
             isSaving = isSaving,
             availableBanks = bankNames,
+            availableCurrencies = currencyCodes,
             onDismiss = { editingCard = null },
             onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
                 viewModel.onEdit(

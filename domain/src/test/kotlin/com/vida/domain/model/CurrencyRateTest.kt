@@ -13,8 +13,8 @@ class CurrencyRateTest {
     @Test
     fun `valid construction succeeds`() {
         val r = CurrencyRate(
-            fromCurrency = Currency.USD,
-            toCurrency = Currency.CUP,
+            fromCurrency = "USD",
+            toCurrency = "CUP",
             rate = BigDecimal("420"),
             updatedAt = now,
         )
@@ -26,16 +26,16 @@ class CurrencyRateTest {
     fun `non-positive rate is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
             CurrencyRate(
-                fromCurrency = Currency.USD,
-                toCurrency = Currency.CUP,
+                fromCurrency = "USD",
+                toCurrency = "CUP",
                 rate = BigDecimal.ZERO,
                 updatedAt = now,
             )
         }
         assertThrows(IllegalArgumentException::class.java) {
             CurrencyRate(
-                fromCurrency = Currency.USD,
-                toCurrency = Currency.CUP,
+                fromCurrency = "USD",
+                toCurrency = "CUP",
                 rate = BigDecimal("-1"),
                 updatedAt = now,
             )
@@ -46,8 +46,8 @@ class CurrencyRateTest {
     fun `fromCurrency equal to toCurrency is rejected`() {
         assertThrows(IllegalArgumentException::class.java) {
             CurrencyRate(
-                fromCurrency = Currency.USD,
-                toCurrency = Currency.USD,
+                fromCurrency = "USD",
+                toCurrency = "USD",
                 rate = BigDecimal.ONE,
                 updatedAt = now,
             )

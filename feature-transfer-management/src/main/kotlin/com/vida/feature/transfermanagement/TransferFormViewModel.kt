@@ -3,6 +3,7 @@ package com.vida.feature.transfermanagement
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Card
+import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Stash
@@ -366,7 +367,7 @@ class TransferFormViewModel @Inject constructor(
                     id = wallet.id,
                     type = SourceType.WALLET,
                     name = wallet.name,
-                    currency = wallet.currency,
+                    currency = Currency.fromCode(wallet.currency),
                     icon = "\uD83D\uDCB0",
                 ),
             )
@@ -380,7 +381,7 @@ class TransferFormViewModel @Inject constructor(
                     // primary identifier (matches wallet behavior); fall
                     // back to the bank name when no custom name was set.
                     name = card.note ?: card.bank,
-                    currency = card.currency,
+                    currency = Currency.values().firstOrNull { it.code.equals(card.currency, ignoreCase = true) } ?: Currency.CUP,
                     icon = "\u2660\uFE0F",
                     subtitle = "···${card.number.masked.substring(12, 16)}",
                 ),

@@ -123,7 +123,7 @@ class CardRepositoryImplTest {
         maskedNumber = "123456******7890",
         bank = "POP",
         type = CardType.DEBIT,
-        currency = Currency.CUP,
+        currency = "CUP",
         note = null,
         expirationDate = LocalDate.of(2028, 12, 31),
     )
@@ -132,7 +132,7 @@ class CardRepositoryImplTest {
         number = CardNumber.fromFirst6Last4("123456", "7890"),
         bank = "POP",
         type = CardType.DEBIT,
-        currency = Currency.CUP,
+        currency = "CUP",
         note = null,
         expirationDate = LocalDate.of(2028, 12, 31),
     )

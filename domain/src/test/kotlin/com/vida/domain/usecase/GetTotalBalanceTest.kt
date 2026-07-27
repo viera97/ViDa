@@ -61,12 +61,12 @@ class GetTotalBalanceTest {
 
         coEvery { cardRepo.getAll() } returns flowOf(emptyList<Card>())
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
-        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.USD)))
+        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = "USD")))
         coEvery { walletRepo.observeBalance(1L) } returns flowOf(Money(BigDecimal.ONE, Currency.USD))
-        coEvery { rateRepo.getRate(Currency.USD, Currency.CUP, now) } returns
+        coEvery { rateRepo.getRate("USD", "CUP", now) } returns
             CurrencyRate(
-                fromCurrency = Currency.USD,
-                toCurrency = Currency.CUP,
+                fromCurrency = "USD",
+                toCurrency = "CUP",
                 rate = BigDecimal("420"),
                 updatedAt = now,
             )
@@ -88,15 +88,15 @@ class GetTotalBalanceTest {
             number = CardNumber.fromFull("1234567890123456"),
             bank = "BANDEC",
             type = CardType.DEBIT,
-            currency = Currency.MLC,
+            currency = "MLC",
             expirationDate = LocalDate.now().plusYears(2),
         )
         coEvery { cardRepo.getAll() } returns flowOf(listOf(mlcCard))
         coEvery { stashRepo.getAll() } returns flowOf(emptyList<Stash>())
-        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = Currency.CUP)))
+        coEvery { walletRepo.getAll() } returns flowOf(listOf(Wallet(id = 1L, currency = "CUP")))
         coEvery { walletRepo.observeBalance(1L) } returns flowOf(Money(BigDecimal("100.00"), Currency.CUP))
         coEvery { cardRepo.observeBalance(7L) } returns flowOf(Money(BigDecimal("50"), Currency.MLC))
-        coEvery { rateRepo.getRate(Currency.MLC, Currency.CUP, now) } returns null
+        coEvery { rateRepo.getRate("MLC", "CUP", now) } returns null
 
         val total = newTotal(cardRepo, stashRepo, walletRepo, rateRepo).invoke()
         // wallet contributes 100 CUP; MLC card dropped because no rate

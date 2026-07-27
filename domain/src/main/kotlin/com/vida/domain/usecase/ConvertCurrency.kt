@@ -23,7 +23,7 @@ import java.time.Instant
 class ConvertCurrency(private val rateRepo: CurrencyRateRepository) {
     suspend operator fun invoke(from: Money, to: Currency, asOf: Instant = Instant.now()): Money? {
         if (from.currency == to) return from
-        val rate = rateRepo.getRate(from.currency, to, asOf) ?: return null
+        val rate = rateRepo.getRate(from.currency.code, to.code, asOf) ?: return null
         return from.convertTo(to, rate.rate)
     }
 }

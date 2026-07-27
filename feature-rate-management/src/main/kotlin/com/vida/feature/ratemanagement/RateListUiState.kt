@@ -1,6 +1,5 @@
 package com.vida.feature.ratemanagement
 
-import com.vida.domain.model.Currency
 import java.math.BigDecimal
 import java.time.Instant
 
@@ -49,8 +48,8 @@ sealed interface RateListUiState {
  */
 data class RateDisplayItem(
     val id: Long,
-    val fromCurrency: Currency,
-    val toCurrency: Currency,
+    val fromCurrency: String,
+    val toCurrency: String,
     val pairLabel: String,
     val rate: BigDecimal,
     val rateFormatted: String,
@@ -72,8 +71,8 @@ data class RateDisplayItem(
  */
 data class InverseRateDisplay(
     val id: Long,
-    val fromCurrency: Currency,
-    val toCurrency: Currency,
+    val fromCurrency: String,
+    val toCurrency: String,
     val rate: BigDecimal,
     val rateFormatted: String,
 )

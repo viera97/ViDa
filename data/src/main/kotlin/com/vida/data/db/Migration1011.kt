@@ -20,5 +20,21 @@ val MIGRATION_10_11: Migration = object : Migration(10, 11) {
             """.trimIndent(),
         )
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `idx_banks_name` ON `banks` (`name`)")
+
+        // Seed default banks for users upgrading from v10 — `AppDatabaseCallback.onCreate`
+        // only fires on fresh install, so existing users would get an empty banks table
+        // and see only "Bandec" + "Otros" in the card creation dialog.
+        db.execSQL("""
+            INSERT OR IGNORE INTO `banks` (`name`, `color`, `is_system`)
+            VALUES ('Bandec', ${0xFF8E0509.toInt()}, 1)
+        """.trimIndent())
+        db.execSQL("""
+            INSERT OR IGNORE INTO `banks` (`name`, `color`, `is_system`)
+            VALUES ('BPA', ${0xFFBCD1DA.toInt()}, 1)
+        """.trimIndent())
+        db.execSQL("""
+            INSERT OR IGNORE INTO `banks` (`name`, `color`, `is_system`)
+            VALUES ('Metropolitano', ${0xFF91D506.toInt()}, 1)
+        """.trimIndent())
     }
 }

@@ -5,15 +5,10 @@ import android.content.ClipboardManager
 import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -27,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -37,8 +31,8 @@ import java.math.RoundingMode
  * existing exchange rate.
  *
  * Fields:
- * - From currency ([FilterChip] row: USD default)
- * - To currency ([FilterChip] row: CUP default)
+ * - From currency ([ExposedDropdownMenuBox], defaults to "USD")
+ * - To currency ([ExposedDropdownMenuBox], defaults to "CUP")
  * - Amount ([OutlinedTextField] with decimal keyboard)
  * - Result text — recomputed live as inputs change
  *
@@ -59,16 +53,23 @@ import java.math.RoundingMode
  *   the given pair and provider, or null if none configured.
  * @param availableProviders Distinct providers that have at least one rate
  *   configured. The dropdown shows these options.
+ * @param availableCurrencies Currency codes available for the from/to dropdowns.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConverterDialog(
     onDismiss: () -> Unit,
-    getRate: (from: Currency, to: Currency, provider: String) -> CurrencyRate?,
+    getRate: (fromCode: String, toCode: String, provider: String) -> CurrencyRate?,
     availableProviders: List<String>,
+    availableCurrencies: List<String> = emptyList(),
 ) {
-    var fromCurrency by remember { mutableStateOf(Currency.USD) }
-    var toCurrency by remember { mutableStateOf(Currency.CUP) }
+    val defaultFrom = availableCurrencies.firstOrNull() ?: "USD"
+    val defaultTo = availableCurrencies.firstOrNull { it != defaultFrom } ?: "CUP"
+
+    var fromCurrency by remember { mutableStateOf(defaultFrom) }
+    var toCurrency by remember { mutableStateOf(defaultTo) }
+    var fromExpanded by remember { mutableStateOf(false) }
+    var toExpanded by remember { mutableStateOf(false) }
     var amountText by remember { mutableStateOf("") }
 
     // Default provider: "Manual" if available, else first entry, else "Manual".
@@ -124,34 +125,43 @@ fun ConverterDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // From currency
-                Text(
-                    text = "De",
-                    style = MaterialTheme.typography.bodyMedium,
+                // From currency — dropdown
+                CurrencySelector(
+                    selectedCurrencyCode = fromCurrency,
+                    label = "De",
+                    onShowSheet = { fromExpanded = true },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = fromCurrency == curr,
-                            onClick = { fromCurrency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
+                if (fromExpanded) {
+                    CurrencyPickerSheet(
+                        availableCurrencies = availableCurrencies,
+                        selectedCurrencyCode = fromCurrency,
+                        onDismiss = { fromExpanded = false },
+                        onCurrencySelected = { code ->
+                            fromCurrency = code
+                            if (toCurrency == code) {
+                                toCurrency = availableCurrencies.firstOrNull { it != code } ?: "CUP"
+                            }
+                            fromExpanded = false
+                        },
+                    )
                 }
 
-                // To currency
-                Text(
-                    text = "A",
-                    style = MaterialTheme.typography.bodyMedium,
+                // To currency — dropdown
+                CurrencySelector(
+                    selectedCurrencyCode = toCurrency,
+                    label = "A",
+                    onShowSheet = { toExpanded = true },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = toCurrency == curr,
-                            onClick = { toCurrency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
+                if (toExpanded) {
+                    CurrencyPickerSheet(
+                        availableCurrencies = availableCurrencies,
+                        selectedCurrencyCode = toCurrency,
+                        onDismiss = { toExpanded = false },
+                        onCurrencySelected = { code ->
+                            toCurrency = code
+                            toExpanded = false
+                        },
+                    )
                 }
 
                 if (fromEqualsTo) {
@@ -162,46 +172,28 @@ fun ConverterDialog(
                     )
                 } else if (rate == null) {
                     Text(
-                        text = "No hay tasa configurada para ${fromCurrency.code} → ${toCurrency.code} ($selectedProvider)",
+                        text = "No hay tasa configurada para $fromCurrency → $toCurrency ($selectedProvider)",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
 
                 // Provider selector — above Cantidad
-                ExposedDropdownMenuBox(
-                    expanded = providerMenuExpanded,
-                    onExpandedChange = { providerMenuExpanded = it },
-                ) {
-                    OutlinedTextField(
-                        value = selectedProvider,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Proveedor") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(
-                                expanded = providerMenuExpanded,
-                            )
+                CurrencySelector(
+                    selectedCurrencyCode = selectedProvider,
+                    label = "Proveedor",
+                    onShowSheet = { providerMenuExpanded = true },
+                )
+                if (providerMenuExpanded) {
+                    ProviderPickerSheet(
+                        availableProviders = availableProviders,
+                        selectedProvider = selectedProvider,
+                        onDismiss = { providerMenuExpanded = false },
+                        onProviderSelected = { provider ->
+                            selectedProvider = provider
+                            providerMenuExpanded = false
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(),
-                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
                     )
-                    ExposedDropdownMenu(
-                        expanded = providerMenuExpanded,
-                        onDismissRequest = { providerMenuExpanded = false },
-                    ) {
-                        availableProviders.forEach { provider ->
-                            DropdownMenuItem(
-                                text = { Text(provider) },
-                                onClick = {
-                                    selectedProvider = provider
-                                    providerMenuExpanded = false
-                                },
-                            )
-                        }
-                    }
                 }
 
                 // Amount
@@ -219,7 +211,7 @@ fun ConverterDialog(
                 // Result
                 if (resultText != null) {
                     Text(
-                        text = "Resultado: $resultText ${toCurrency.code}",
+                        text = "Resultado: $resultText $toCurrency",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary,
                     )

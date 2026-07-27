@@ -41,6 +41,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -164,6 +165,8 @@ fun FuentesScreen(
     val cardState by cardListViewModel.uiState.collectAsState()
     val isSavingWallet by walletViewModel.isSaving.collectAsState()
     val isSavingCard by cardListViewModel.isSaving.collectAsState()
+    val bankNames by cardListViewModel.bankNames.collectAsStateWithLifecycle()
+    val currencyCodes by cardListViewModel.currencyCodes.collectAsStateWithLifecycle()
 
     var showAddMenu by remember { mutableStateOf(false) }
     var showWalletDialog by remember { mutableStateOf(false) }
@@ -365,8 +368,10 @@ fun FuentesScreen(
     // ── Wallet creation dialog ───────────────────────────────────────────────
     if (showWalletDialog) {
         WalletEditDialog(
-            initialName = "Billetera",
+            initialName = "",
+            isEdit = false,
             isSaving = isSavingWallet,
+            availableCurrencies = currencyCodes,
             onDismiss = { showWalletDialog = false },
             onSave = { name, currency, balanceMinor ->
                 walletViewModel.onAdd(name, currency, balanceMinor)
@@ -379,6 +384,8 @@ fun FuentesScreen(
         CardFormDialog(
             isEdit = false,
             isSaving = isSavingCard,
+            availableBanks = bankNames,
+            availableCurrencies = currencyCodes,
             onDismiss = { showCardDialog = false },
             onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
                 cardListViewModel.onAdd(bank, first6, last4, type, currency, expiry, note, balanceMinor)
@@ -463,7 +470,7 @@ fun FuentesScreen(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                         Text(
-                            text = "Moneda: ${card.currency.code}",
+                            text = "Moneda: ${card.currency}",
                             style = MaterialTheme.typography.bodyMedium,
                         )
                         Text(
@@ -506,7 +513,9 @@ fun FuentesScreen(
             initialName = wallet.name,
             initialCurrency = wallet.currency,
             balance = balanceInput,
+            isEdit = true,
             isSaving = isSavingWallet,
+            availableCurrencies = currencyCodes,
             onDismiss = { editingWallet = null },
             onSave = { name, currency, balanceMinor ->
                 walletViewModel.onEdit(wallet.id, name, currency, balanceMinor)
@@ -530,6 +539,8 @@ fun FuentesScreen(
             balanceStr = balanceInput,
             isEdit = true,
             isSaving = isSavingCard,
+            availableBanks = bankNames,
+            availableCurrencies = currencyCodes,
             onDismiss = { editingCard = null },
             onSave = { bank, first6, last4, type, currency, expiry, note, balanceMinor ->
                 cardListViewModel.onEdit(card.id, bank, first6, last4, type, currency, expiry, note, balanceMinor)
@@ -694,7 +705,7 @@ private fun FullCardItem(card: CardDisplayItem, onClick: () -> Unit) {
                         )
                     }
                     Text(
-                        text = card.currency.code,
+                        text = card.currency,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )

@@ -13,6 +13,7 @@
 //     @Inject lateinit var cardRepository: CardRepository
 //     @Inject lateinit var stashRepository: StashRepository
 //     @Inject lateinit var walletRepository: WalletRepository
+//     @Inject lateinit var currencyRepository: CurrencyRepository
 //     @Inject lateinit var passphraseProvider: PassphraseProvider
 //
 //     @Test
@@ -25,6 +26,7 @@
 //         assertNotNull("CardRepository must be provided", cardRepository)
 //         assertNotNull("StashRepository must be provided", stashRepository)
 //         assertNotNull("WalletRepository must be provided", walletRepository)
+//         assertNotNull("CurrencyRepository must be provided", currencyRepository)
 //         assertNotNull("PassphraseProvider must be provided", passphraseProvider)
 //     }
 // }

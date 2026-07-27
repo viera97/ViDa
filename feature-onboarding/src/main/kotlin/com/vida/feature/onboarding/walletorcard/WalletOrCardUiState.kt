@@ -1,7 +1,5 @@
 package com.vida.feature.onboarding.walletorcard
 
-import com.vida.domain.model.Currency
-
 /**
  * UI state for the wallet wizard step. The state machine models:
  *
@@ -14,7 +12,7 @@ import com.vida.domain.model.Currency
 sealed interface WalletOrCardUiState {
     data class Editing(
         val name: String = "",
-        val currency: Currency = Currency.CUP,
+        val currency: String = "CUP",
         val balance: String = "",
         val nameError: String? = null,
         val balanceError: String? = null,

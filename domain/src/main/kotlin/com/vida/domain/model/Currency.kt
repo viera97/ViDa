@@ -13,13 +13,17 @@ enum class Currency(val code: String, val symbol: String) {
     EUR("EUR", "€");
 
     companion object {
+        private val DEFAULT = CUP
+
         /**
          * Parse a currency from its string [code]. Case-insensitive.
          *
-         * @throws IllegalArgumentException when [code] does not match any known currency.
+         * Returns [DEFAULT] (CUP) when [code] does not match any known currency,
+         * instead of throwing. This allows dynamic/user-created currencies to
+         * fall back gracefully rather than crashing the app.
          */
         fun fromCode(code: String): Currency =
             values().firstOrNull { it.code.equals(code, ignoreCase = true) }
-                ?: throw IllegalArgumentException("Unknown currency code: $code")
+                ?: DEFAULT
     }
 }

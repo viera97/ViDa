@@ -47,7 +47,7 @@ class WalletOrCardViewModel @Inject constructor(
         _uiState.value = current.copy(name = value, nameError = null)
     }
 
-    fun onCurrencyChange(value: Currency) {
+    fun onCurrencyChange(value: String) {
         val current = _uiState.value as? WalletOrCardUiState.Editing ?: return
         _uiState.value = current.copy(currency = value, balanceError = null)
     }
@@ -80,6 +80,7 @@ class WalletOrCardViewModel @Inject constructor(
             _uiState.value = s.copy(balanceError = OnboardingCopy.WOC_ERR_BALANCE_PARSE)
             return
         }
+        val currencyEnum = Currency.fromCode(s.currency)
         viewModelScope.launch {
             _uiState.value = WalletOrCardUiState.Saving
             try {
@@ -88,7 +89,7 @@ class WalletOrCardViewModel @Inject constructor(
                         id = 0L,
                         currency = s.currency,
                         name = name,
-                        balance = Money.fromMinorUnits(balanceMinor, s.currency),
+                        balance = Money.fromMinorUnits(balanceMinor, currencyEnum),
                     ),
                 )
                 _uiState.value = WalletOrCardUiState.Saved

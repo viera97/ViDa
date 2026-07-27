@@ -3,7 +3,6 @@ package com.vida.data.mapper
 import com.vida.data.db.entity.RecurringExpenseEntity
 import com.vida.data.mapper.util.toColumns
 import com.vida.data.mapper.util.toMoney
-import com.vida.domain.model.Currency
 import com.vida.domain.model.Frequency
 import com.vida.domain.model.RecurringExpense
 import com.vida.domain.model.SourceType
@@ -34,7 +33,7 @@ object RecurringExpenseMapper {
         return RecurringExpense(
             id = entity.id,
             amount = amount,
-            currency = Currency.fromCode(entity.amountCurrency),
+            currency = entity.amountCurrency,
             categoryId = entity.categoryId,
             sourceType = sourceType,
             sourceId = sourceId,

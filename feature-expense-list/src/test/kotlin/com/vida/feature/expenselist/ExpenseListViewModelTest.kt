@@ -47,7 +47,7 @@ class ExpenseListViewModelTest {
         Category(id = 2L, name = "Transporte", color = -14614533),
     )
 
-    private val sampleWallet = Wallet(currency = Currency.CUP)
+    private val sampleWallet = Wallet(currency = "CUP")
 
     private fun sampleExpense(
         id: Long = 1L,

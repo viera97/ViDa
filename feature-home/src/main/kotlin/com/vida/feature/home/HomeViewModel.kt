@@ -237,8 +237,8 @@ class HomeViewModel @javax.inject.Inject constructor(
 
         // ── Rates (graceful degradation per S3) ────────────────────────────
         val rates: Map<String, java.math.BigDecimal>? = try {
-            val usdRate = getCurrentRate(Currency.USD, Currency.CUP, now)
-            val mlcRate = getCurrentRate(Currency.MLC, Currency.CUP, now)
+            val usdRate = getCurrentRate("USD", "CUP", now)
+            val mlcRate = getCurrentRate("MLC", "CUP", now)
             mapOf(
                 "USD" to usdRate.rate,
                 "MLC" to mlcRate.rate,

@@ -11,7 +11,7 @@ package com.vida.domain.model
  */
 data class Wallet(
     val id: Long = 0L,
-    val currency: Currency,
+    val currency: String = "CUP",
     val name: String = "Billetera",
     val balance: Money = Money.ZERO_CUP,
 )

@@ -11,7 +11,7 @@ import java.time.Instant
 
 /**
  * Total balance across every source (wallet + every card + every stash), converted
- * to [Currency.CUP].
+ * to CUP.
  *
  * Source rules:
  *

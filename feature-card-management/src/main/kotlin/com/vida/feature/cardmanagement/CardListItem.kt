@@ -176,7 +176,7 @@ fun CardListItem(
 
                 // Currency code
                 Text(
-                    text = card.currency.code,
+                    text = card.currency,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

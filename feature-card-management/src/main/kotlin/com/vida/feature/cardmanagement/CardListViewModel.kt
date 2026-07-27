@@ -14,6 +14,7 @@ import com.vida.domain.usecase.card.GetCard
 import com.vida.domain.usecase.card.GetCardBalance
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.card.UpdateCard
+import com.vida.domain.usecase.currency.ListCurrencies
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -60,6 +61,7 @@ class CardListViewModel @Inject constructor(
     private val getCard: GetCard,
     private val getCardBalance: GetCardBalance,
     private val listBanks: ListBanks,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CardListUiState>(CardListUiState.Loading)
@@ -78,6 +80,11 @@ class CardListViewModel @Inject constructor(
     /** Reactive list of available bank names for the card form dropdown. */
     val bankNames: StateFlow<List<String>> = listBanks()
         .map { banks -> banks.map { it.name } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Reactive list of currency codes for the card form dropdown. */
+    val currencyCodes: StateFlow<List<String>> = listCurrencies()
+        .map { currencies -> currencies.map { it.code } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Tracks the active card-observation coroutine so [observeCards] can replace it. */
@@ -144,7 +151,7 @@ class CardListViewModel @Inject constructor(
         first6: String,
         last4: String,
         type: CardType,
-        currency: Currency,
+        currency: String,
         expiry: LocalDate,
         note: String?,
         balanceMinor: Long = 0L,
@@ -161,6 +168,7 @@ class CardListViewModel @Inject constructor(
         val trimmedNote = note?.trim()?.ifBlank { null }
         if (trimmedNote != null && trimmedNote.length > 200) return
 
+        val currencyEnum = Currency.values().firstOrNull { it.code.equals(currency, ignoreCase = true) } ?: Currency.CUP
         val card = Card(
             number = number,
             bank = bank.trim(),
@@ -168,7 +176,7 @@ class CardListViewModel @Inject constructor(
             currency = currency,
             expirationDate = expiry,
             note = trimmedNote,
-            balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency),
+            balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currencyEnum),
         )
 
         viewModelScope.launch {
@@ -204,7 +212,7 @@ class CardListViewModel @Inject constructor(
         first6: String,
         last4: String,
         type: CardType,
-        currency: Currency,
+        currency: String,
         expiry: LocalDate,
         note: String?,
         balanceMinor: Long = 0L,
@@ -226,7 +234,7 @@ class CardListViewModel @Inject constructor(
             currency = currency,
             expirationDate = expiry,
             note = note?.trim()?.ifBlank { null },
-            balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency),
+            balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), Currency.values().firstOrNull { it.code.equals(currency, ignoreCase = true) } ?: Currency.CUP),
         )
 
         viewModelScope.launch {
@@ -386,7 +394,7 @@ class CardListViewModel @Inject constructor(
             expiryFormatted = "$month/$year",
             expiry = expirationDate,
             note = note,
-            balanceFormatted = "${currency.symbol} —",
+            balanceFormatted = "${Currency.values().firstOrNull { it.code.equals(currency, ignoreCase = true) }?.symbol ?: currency} —",
             balance = balance,
         )
     }

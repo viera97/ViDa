@@ -7,6 +7,7 @@ import com.vida.data.db.dao.BankDao
 import com.vida.data.db.dao.BalanceDao
 import com.vida.data.db.dao.CardDao
 import com.vida.data.db.dao.CategoryDao
+import com.vida.data.db.dao.CurrencyDao
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.dao.ExpenseDao
 import com.vida.data.db.dao.IncomeDao
@@ -19,6 +20,7 @@ import com.vida.data.db.dao.WalletDao
 import com.vida.data.mapper.BankMapper
 import com.vida.data.mapper.CardMapper
 import com.vida.data.mapper.CategoryMapper
+import com.vida.data.mapper.CurrencyMapper
 import com.vida.data.mapper.CurrencyRateMapper
 import com.vida.data.mapper.ExpenseMapper
 import com.vida.data.mapper.IncomeMapper
@@ -33,10 +35,17 @@ import com.vida.data.security.DevPassphraseProvider
 import com.vida.data.security.PassphraseProvider
 import com.vida.domain.repository.BankRepository
 import com.vida.domain.repository.CategoryRepository
+import com.vida.domain.repository.CurrencyRepository
 import com.vida.domain.usecase.bank.GetBankColorByName
 import com.vida.domain.usecase.bank.ListBanks
 import com.vida.domain.usecase.bank.SeedDefaultBanks
 import com.vida.domain.usecase.category.SeedDefaultCategories
+import com.vida.domain.usecase.currency.AddCurrency
+import com.vida.domain.usecase.currency.DeleteCurrency
+import com.vida.domain.usecase.currency.GetCurrency
+import com.vida.domain.usecase.currency.ListCurrencies
+import com.vida.domain.usecase.currency.SeedDefaultCurrencies
+import com.vida.domain.usecase.currency.UpdateCurrency
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -60,6 +69,36 @@ object DatabaseModule {
     @Singleton
     fun provideSeedDefaultBanks(repo: BankRepository): SeedDefaultBanks =
         SeedDefaultBanks(repo)
+
+    @Provides
+    @Singleton
+    fun provideSeedDefaultCurrencies(repo: CurrencyRepository): SeedDefaultCurrencies =
+        SeedDefaultCurrencies(repo)
+
+    @Provides
+    @Singleton
+    fun provideListCurrencies(repo: CurrencyRepository): ListCurrencies =
+        ListCurrencies(repo)
+
+    @Provides
+    @Singleton
+    fun provideGetCurrency(repo: CurrencyRepository): GetCurrency =
+        GetCurrency(repo)
+
+    @Provides
+    @Singleton
+    fun provideAddCurrency(repo: CurrencyRepository): AddCurrency =
+        AddCurrency(repo)
+
+    @Provides
+    @Singleton
+    fun provideUpdateCurrency(repo: CurrencyRepository): UpdateCurrency =
+        UpdateCurrency(repo)
+
+    @Provides
+    @Singleton
+    fun provideDeleteCurrency(repo: CurrencyRepository): DeleteCurrency =
+        DeleteCurrency(repo)
 
     @Provides
     @Singleton
@@ -105,6 +144,9 @@ object DatabaseModule {
 
     @Provides
     fun provideCurrencyRateDao(db: AppDatabase): CurrencyRateDao = db.currencyRateDao()
+
+    @Provides
+    fun provideCurrencyDao(db: AppDatabase): CurrencyDao = db.currencyDao()
 
     @Provides
     fun provideTransferDao(db: AppDatabase): TransferDao = db.transferDao()
@@ -157,6 +199,9 @@ object DatabaseModule {
 
     @Provides
     fun provideCurrencyRateMapper(): CurrencyRateMapper = CurrencyRateMapper
+
+    @Provides
+    fun provideCurrencyMapper(): CurrencyMapper = CurrencyMapper
 
     @Provides
     fun provideTransferMapper(): TransferMapper = TransferMapper

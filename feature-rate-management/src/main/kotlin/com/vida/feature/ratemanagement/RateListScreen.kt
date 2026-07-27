@@ -68,6 +68,7 @@ fun RateListScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
     val availableProviders by viewModel.availableProviders.collectAsStateWithLifecycle()
+    val currencyCodes by viewModel.currencyCodes.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
@@ -218,12 +219,13 @@ fun RateListScreen(
             isEdit = false,
             isSaving = isSaving,
             duplicateError = showAddDuplicateError,
+            availableCurrencies = currencyCodes,
             onDismiss = {
                 showAddDialog = false
                 showAddDuplicateError = false
             },
-            onSave = { from, to, rate, date, provider ->
-                viewModel.onAdd(from, to, rate, date, provider)
+            onSave = { fromCode, toCode, rate, date, provider ->
+                viewModel.onAdd(fromCode, toCode, rate, date, provider)
             },
         )
     }
@@ -238,9 +240,10 @@ fun RateListScreen(
             initialDate = rate.updatedAt,
             isEdit = true,
             isSaving = isSaving,
+            availableCurrencies = currencyCodes,
             onDismiss = { editingRate = null },
-            onSave = { from, to, rateVal, date, provider ->
-                viewModel.onEdit(rate.id, from, to, rateVal, date, provider)
+            onSave = { fromCode, toCode, rateVal, date, provider ->
+                viewModel.onEdit(rate.id, fromCode, toCode, rateVal, date, provider)
             },
         )
     }
@@ -248,7 +251,7 @@ fun RateListScreen(
     // ── Delete confirmation AlertDialog ──────────────────────────────────────
     showDeleteConfirm?.let { rate ->
         val inverseLabel = rate.inverse?.let { inv ->
-            " y ${inv.fromCurrency.code} → ${inv.toCurrency.code}"
+            " y ${inv.fromCurrency} → ${inv.toCurrency}"
         } ?: ""
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = null },
@@ -299,10 +302,11 @@ fun RateListScreen(
     if (showConverter) {
         ConverterDialog(
             onDismiss = { showConverter = false },
-            getRate = { from, to, provider ->
-                viewModel.getRateForConversion(from, to, provider)
+            getRate = { fromCode, toCode, provider ->
+                viewModel.getRateForConversion(fromCode, toCode, provider)
             },
             availableProviders = availableProviders,
+            availableCurrencies = currencyCodes,
         )
     }
 }

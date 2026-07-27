@@ -1,6 +1,5 @@
 package com.vida.domain.usecase.rate
 
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import com.vida.domain.repository.CurrencyRateRepository
 import java.time.Instant
@@ -14,8 +13,8 @@ import java.time.Instant
  */
 class GetCurrentRate(private val repo: CurrencyRateRepository) {
     suspend operator fun invoke(
-        from: Currency,
-        to: Currency,
+        from: String,
+        to: String,
         asOf: Instant = Instant.now(),
     ): CurrencyRate {
         require(from != to) { "from and to currencies must differ" }

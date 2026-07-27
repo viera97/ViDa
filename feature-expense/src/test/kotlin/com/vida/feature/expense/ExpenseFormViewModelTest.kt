@@ -65,7 +65,7 @@ class ExpenseFormViewModelTest {
             number = testCardNumber,
             bank = "Banco kubo",
             type = CardType.DEBIT,
-            currency = Currency.USD,
+            currency = "USD",
             expirationDate = LocalDate.of(2028, 12, 31),
         ),
     )
@@ -80,7 +80,7 @@ class ExpenseFormViewModelTest {
         ),
     )
 
-    private val defaultWallet = Wallet(id = 1L, currency = Currency.CUP)
+    private val defaultWallet = Wallet(id = 1L, currency = "CUP")
 
     @OptIn(ExperimentalCoroutinesApi::class)
     @Before

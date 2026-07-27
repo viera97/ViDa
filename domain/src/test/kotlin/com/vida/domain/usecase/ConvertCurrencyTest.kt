@@ -18,8 +18,8 @@ class ConvertCurrencyTest {
     private val now: Instant = Instant.parse("2026-06-19T12:00:00Z")
     private val oneUSD: Money = Money(BigDecimal.ONE, Currency.USD)
     private val rateUSDToCUP: CurrencyRate = CurrencyRate(
-        fromCurrency = Currency.USD,
-        toCurrency = Currency.CUP,
+        fromCurrency = "USD",
+        toCurrency = "CUP",
         rate = BigDecimal("420"),
         updatedAt = now,
     )
@@ -35,7 +35,7 @@ class ConvertCurrencyTest {
     @Test
     fun `available rate produces converted Money`() = runTest {
         val repo = mockk<CurrencyRateRepository>()
-        coEvery { repo.getRate(Currency.USD, Currency.CUP, now) } returns rateUSDToCUP
+        coEvery { repo.getRate("USD", "CUP", now) } returns rateUSDToCUP
         val convert = ConvertCurrency(repo)
         val result = convert(oneUSD, Currency.CUP, now)
         assertEquals(Money(BigDecimal("420.00"), Currency.CUP), result)
@@ -44,7 +44,7 @@ class ConvertCurrencyTest {
     @Test
     fun `missing rate returns null`() = runTest {
         val repo = mockk<CurrencyRateRepository>()
-        coEvery { repo.getRate(Currency.USD, Currency.CUP, now) } returns null
+        coEvery { repo.getRate("USD", "CUP", now) } returns null
         val convert = ConvertCurrency(repo)
         val result = convert(oneUSD, Currency.CUP, now)
         assertNull(result)

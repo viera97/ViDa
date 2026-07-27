@@ -38,16 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vida.domain.model.Category
-import com.vida.domain.model.Currency
 import com.vida.feature.expense.form.AmountSection
 import com.vida.feature.expense.form.CategorySelector
 import com.vida.feature.expense.form.CategorySheet
 import com.vida.feature.expense.form.DateSelector
-import com.vida.feature.expense.form.TimeSelector
 import com.vida.feature.expense.form.DescriptionInput
 import com.vida.feature.expense.form.NoteInput
 import com.vida.feature.expense.form.SourceSelector
 import com.vida.feature.expense.form.SourceSheet
+import com.vida.feature.expense.form.TimeSelector
 import java.time.Instant
 
 /**
@@ -160,7 +159,6 @@ fun ExpenseFormScreen(
                         onShowCategorySheet = { showCategorySheet = true },
                         onShowSourceSheet = { showSourceSheet = true },
                         onAmountChanged = viewModel::onAmountChanged,
-                        onCurrencyChanged = viewModel::onCurrencyChanged,
                         onDescriptionChanged = viewModel::onDescriptionChanged,
                         onDateTimeChanged = viewModel::onDateTimeChanged,
                         onNoteChanged = viewModel::onNoteChanged,
@@ -182,7 +180,6 @@ fun ExpenseFormScreen(
                             onShowCategorySheet = { showCategorySheet = true },
                             onShowSourceSheet = { showSourceSheet = true },
                             onAmountChanged = viewModel::onAmountChanged,
-                            onCurrencyChanged = viewModel::onCurrencyChanged,
                             onDescriptionChanged = viewModel::onDescriptionChanged,
                             onDateTimeChanged = viewModel::onDateTimeChanged,
                             onNoteChanged = viewModel::onNoteChanged,
@@ -221,7 +218,6 @@ fun ExpenseFormScreen(
                             onShowCategorySheet = { showCategorySheet = true },
                             onShowSourceSheet = { showSourceSheet = true },
                             onAmountChanged = viewModel::onAmountChanged,
-                            onCurrencyChanged = viewModel::onCurrencyChanged,
                             onDescriptionChanged = viewModel::onDescriptionChanged,
                             onDateTimeChanged = viewModel::onDateTimeChanged,
                             onNoteChanged = viewModel::onNoteChanged,
@@ -267,6 +263,8 @@ fun ExpenseFormScreen(
                     )
                 }
             }
+
+            // Currency is auto-determined by the source — no standalone currency picker.
         }
     }
 }
@@ -287,7 +285,6 @@ private fun FormContent(
     onShowCategorySheet: () -> Unit,
     onShowSourceSheet: () -> Unit,
     onAmountChanged: (String) -> Unit,
-    onCurrencyChanged: ((Currency) -> Unit)?,
     onDescriptionChanged: (String) -> Unit,
     onDateTimeChanged: (Instant) -> Unit,
     onNoteChanged: (String) -> Unit,
@@ -301,10 +298,8 @@ private fun FormContent(
     ) {
         AmountSection(
             amount = ready.form.amount,
-            currency = ready.form.currency,
             amountError = ready.validationErrors["amount"],
             onAmountChanged = onAmountChanged,
-            onCurrencyChanged = onCurrencyChanged,
         )
         Spacer(modifier = Modifier.height(12.dp))
         DescriptionInput(

@@ -4,6 +4,7 @@ import com.vida.data.repository.BankRepositoryImpl
 import com.vida.data.repository.CardRepositoryImpl
 import com.vida.data.repository.CategoryRepositoryImpl
 import com.vida.data.repository.CurrencyRateRepositoryImpl
+import com.vida.data.repository.CurrencyRepositoryImpl
 import com.vida.data.repository.ExpenseRepositoryImpl
 import com.vida.data.repository.IncomeRepositoryImpl
 import com.vida.data.repository.RecurringExpenseRepositoryImpl
@@ -16,6 +17,7 @@ import com.vida.domain.repository.BankRepository
 import com.vida.domain.repository.CardRepository
 import com.vida.domain.repository.CategoryRepository
 import com.vida.domain.repository.CurrencyRateRepository
+import com.vida.domain.repository.CurrencyRepository
 import com.vida.domain.repository.ExpenseRepository
 import com.vida.domain.repository.IncomeRepository
 import com.vida.domain.repository.RecurringExpenseRepository
@@ -41,6 +43,7 @@ abstract class RepositoryModule {
     @Binds abstract fun bindIncomeRepository(impl: IncomeRepositoryImpl): IncomeRepository
     @Binds abstract fun bindRefundRepository(impl: RefundRepositoryImpl): RefundRepository
     @Binds abstract fun bindCurrencyRateRepository(impl: CurrencyRateRepositoryImpl): CurrencyRateRepository
+    @Binds abstract fun bindCurrencyRepository(impl: CurrencyRepositoryImpl): CurrencyRepository
     @Binds abstract fun bindTransferRepository(impl: TransferRepositoryImpl): TransferRepository
     @Binds
     abstract fun bindRecurringExpenseRepository(impl: RecurringExpenseRepositoryImpl): RecurringExpenseRepository

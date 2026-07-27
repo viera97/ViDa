@@ -147,7 +147,7 @@ class ExpenseRepositoryImplTest {
                     maskedNumber = "123456******7890",
                     bank = "POP",
                     type = CardType.DEBIT,
-                    currency = Currency.USD,
+                    currency = "USD",
                     note = null,
                     expirationDate = LocalDate.of(2028, 12, 31),
                     balanceMinor = 50_00L,
@@ -187,7 +187,7 @@ class ExpenseRepositoryImplTest {
                 CategoryEntity(name = "Comida", color = 0, icon = null, isSystem = 0),
             )
             realDb.walletDao().upsert(
-                WalletEntity(id = 1L, currency = Currency.USD, balanceMinor = 10_000L),
+                WalletEntity(id = 1L, currency = "USD", balanceMinor = 10_000L),
             )
 
             val realRepository = ExpenseRepositoryImpl(

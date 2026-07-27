@@ -1,7 +1,6 @@
 package com.vida.data.mapper
 
 import com.vida.data.db.entity.CurrencyRateEntity
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -15,8 +14,8 @@ class CurrencyRateMapperTest {
     fun `round trip preserves all fields`() {
         val rate = CurrencyRate(
             id = 1L,
-            fromCurrency = Currency.USD,
-            toCurrency = Currency.CUP,
+            fromCurrency = "USD",
+            toCurrency = "CUP",
             rate = BigDecimal("24.50"),
             updatedAt = Instant.ofEpochMilli(5_000_000L),
             provider = "Manual",
@@ -35,8 +34,8 @@ class CurrencyRateMapperTest {
     fun `updatedAt maps to effective_date column`() {
         val rate = CurrencyRate(
             id = 0L,
-            fromCurrency = Currency.USD,
-            toCurrency = Currency.MLC,
+            fromCurrency = "USD",
+            toCurrency = "MLC",
             rate = BigDecimal("1.10"),
             updatedAt = Instant.ofEpochMilli(12345L),
             provider = "Manual",
@@ -49,8 +48,8 @@ class CurrencyRateMapperTest {
     fun `rate BigDecimal round-trips via Double`() {
         val rate = CurrencyRate(
             id = 0L,
-            fromCurrency = Currency.USD,
-            toCurrency = Currency.CUP,
+            fromCurrency = "USD",
+            toCurrency = "CUP",
             rate = BigDecimal("24.50"),
             updatedAt = Instant.ofEpochMilli(0L),
         )
@@ -64,10 +63,10 @@ class CurrencyRateMapperTest {
     @Test
     fun `all currency pairs round trip`() {
         val pairs = listOf(
-            Currency.USD to Currency.CUP,
-            Currency.CUP to Currency.USD,
-            Currency.USD to Currency.MLC,
-            Currency.MLC to Currency.CUP,
+            "USD" to "CUP",
+            "CUP" to "USD",
+            "USD" to "MLC",
+            "MLC" to "CUP",
         )
         for ((from, to) in pairs) {
             val rate = CurrencyRate(

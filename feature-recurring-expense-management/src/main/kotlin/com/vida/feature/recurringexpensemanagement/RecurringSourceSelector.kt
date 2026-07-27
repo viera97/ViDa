@@ -43,7 +43,7 @@ fun RecurringSourceSelector(
             label = {
                 Text(
                     text = if (selectedSource != null) {
-                        "${selectedSource.label} (${selectedSource.currency.code})"
+                        "${selectedSource.label} (${selectedSource.currency})"
                     } else {
                         "Origen"
                     },

@@ -2,7 +2,6 @@ package com.vida.data.db.converter
 
 import com.vida.domain.model.Currency
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertThrows
 import org.junit.Test
 
 class CurrencyConverterTest {
@@ -31,9 +30,7 @@ class CurrencyConverterTest {
     }
 
     @Test
-    fun `throws on unknown currency code`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converter.toCurrency("XYZ")
-        }
+    fun `unknown currency code falls back to CUP`() {
+        assertEquals(Currency.CUP, converter.toCurrency("XYZ"))
     }
 }

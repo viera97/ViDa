@@ -1,6 +1,5 @@
 package com.vida.domain.repository
 
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -13,8 +12,8 @@ import java.time.Instant
  */
 interface CurrencyRateRepository {
     fun getAll(): Flow<List<CurrencyRate>>
-    suspend fun getRate(from: Currency, to: Currency, asOf: Instant): CurrencyRate?
-    suspend fun getRateHistory(from: Currency, to: Currency): Flow<List<CurrencyRate>>
+    suspend fun getRate(from: String, to: String, asOf: Instant): CurrencyRate?
+    suspend fun getRateHistory(from: String, to: String): Flow<List<CurrencyRate>>
     suspend fun upsert(rate: CurrencyRate): Long
     suspend fun delete(id: Long)
 }

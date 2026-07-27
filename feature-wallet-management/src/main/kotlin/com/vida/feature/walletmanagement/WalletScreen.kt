@@ -86,6 +86,7 @@ fun WalletScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val isSaving by viewModel.isSaving.collectAsStateWithLifecycle()
+    val currencyCodes by viewModel.currencyCodes.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
     // ── Dialog state (owned by Compose, not ViewModel) ──────────────────────
@@ -238,12 +239,14 @@ fun WalletScreen(
     // ── Add dialog ──────────────────────────────────────────────────────────
     if (showAddDialog) {
         WalletEditDialog(
-            initialName = "Billetera",
-            initialCurrency = com.vida.domain.model.Currency.CUP,
+            initialName = "",
+            initialCurrency = "CUP",
+            isEdit = false,
             isSaving = isSaving,
+            availableCurrencies = currencyCodes,
             onDismiss = { showAddDialog = false },
-            onSave = { name, currency, balanceMinor ->
-                viewModel.onAdd(name, currency, balanceMinor)
+            onSave = { name, currencyCode, balanceMinor ->
+                viewModel.onAdd(name, currencyCode, balanceMinor)
             },
         )
     }
@@ -257,10 +260,12 @@ fun WalletScreen(
             initialName = wallet.name,
             initialCurrency = wallet.currency,
             balance = balanceInput,
+            isEdit = true,
             isSaving = isSaving,
+            availableCurrencies = currencyCodes,
             onDismiss = { editingWallet = null },
-            onSave = { name, currency, balanceMinor ->
-                viewModel.onEdit(wallet.id, name, currency, balanceMinor)
+            onSave = { name, currencyCode, balanceMinor ->
+                viewModel.onEdit(wallet.id, name, currencyCode, balanceMinor)
             },
         )
     }

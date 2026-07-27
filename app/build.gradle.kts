@@ -99,6 +99,7 @@ dependencies {
     implementation(project(":feature-income"))
     implementation(project(":feature-income-list"))
     implementation(project(":feature-bank-management"))
+    implementation(project(":feature-currency-management"))
     implementation(project(":feature-category-management"))
     implementation(project(":feature-card-management"))
     implementation(project(":feature-stash-management"))

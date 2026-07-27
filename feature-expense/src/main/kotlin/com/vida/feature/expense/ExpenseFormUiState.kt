@@ -33,6 +33,7 @@ sealed interface ExpenseFormUiState {
         val form: FormFields,
         val sources: List<SourceItem>,
         val categories: List<Category>,
+        val availableCurrencies: List<Currency> = Currency.entries.toList(),
         val validationErrors: Map<String, String> = emptyMap(),
     ) : ExpenseFormUiState
 
@@ -84,12 +85,12 @@ data class FormFields(
  * @property type Which kind of source this is.
  * @property label Display name (e.g. "Billetera", "Banco kubo", "Ahorro vacaciones").
  * @property subtitle Optional supplementary text (e.g. masked card number).
- * @property currency The source's native currency.
+ * @property currency The source's native currency code (raw string, e.g. "BOB").
  */
 data class SourceItem(
     val id: Long?,
     val type: SourceType,
     val label: String,
     val subtitle: String? = null,
-    val currency: Currency,
+    val currency: String,
 )

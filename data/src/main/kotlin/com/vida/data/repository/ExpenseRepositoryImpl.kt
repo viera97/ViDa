@@ -88,7 +88,7 @@ class ExpenseRepositoryImpl @Inject constructor(
             val charged = expense.realAmount ?: expense.amount
             val delta = -charged.amountMinorUnits()
             when (expense.sourceType) {
-                SourceType.WALLET -> walletDao.adjustBalance(WALLET_SINGLETON_ID, delta)
+                SourceType.WALLET -> walletDao.adjustBalance(expense.sourceId ?: WALLET_SINGLETON_ID, delta)
                 SourceType.CARD -> cardDao.adjustBalance(expense.sourceId!!, delta)
                 SourceType.STASH -> Unit
             }

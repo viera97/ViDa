@@ -44,7 +44,7 @@ class IncomeListViewModelTest {
         CardNumber.fromFirst6Last4("123456", "3456")
 
     private val sampleWallets = listOf(
-        Wallet(id = 1L, name = "Efectivo", currency = Currency.CUP),
+        Wallet(id = 1L, name = "Efectivo", currency = "CUP"),
     )
 
     private val sampleCards = listOf(
@@ -53,7 +53,7 @@ class IncomeListViewModelTest {
             number = testCardNumber,
             bank = "Banco BPA",
             type = CardType.DEBIT,
-            currency = Currency.USD,
+            currency = "USD",
             expirationDate = LocalDate.of(2028, 12, 31),
         ),
     )

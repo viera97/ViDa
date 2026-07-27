@@ -6,6 +6,7 @@ import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.vida.domain.usecase.bank.SeedDefaultBanks
 import com.vida.domain.usecase.category.SeedDefaultCategories
+import com.vida.domain.usecase.currency.SeedDefaultCurrencies
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
@@ -42,6 +43,7 @@ class AppDatabaseCallback @Inject constructor(
     interface SeedEntryPoint {
         fun seedDefaultCategories(): SeedDefaultCategories
         fun seedDefaultBanks(): SeedDefaultBanks
+        fun seedDefaultCurrencies(): SeedDefaultCurrencies
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -56,6 +58,7 @@ class AppDatabaseCallback @Inject constructor(
                 )
                 entryPoint.seedDefaultCategories().invoke()
                 entryPoint.seedDefaultBanks().invoke()
+                entryPoint.seedDefaultCurrencies().invoke()
             } catch (e: Exception) {
                 Log.w("AppDatabaseCallback", "Failed to seed default categories", e)
             }

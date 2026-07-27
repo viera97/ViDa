@@ -13,7 +13,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.vida.domain.model.Currency
 import com.vida.feature.onboarding.OnboardingCopy.WOC_ERR_BALANCE_PARSE
 import com.vida.feature.onboarding.OnboardingCopy.WOC_FIELD_CURRENCY
 import com.vida.feature.onboarding.OnboardingCopy.WOC_FIELD_NAME
@@ -26,8 +25,7 @@ import com.vida.feature.onboarding.OnboardingCopy.WOC_FIELD_WALLET_BALANCE
  * Fields:
  * - [OutlinedTextField] `WOC_FIELD_NAME` — required, 1–100 chars. Inline
  *   error if blank (after trim) or too long.
- * - Currency — [FilterChip] row over every [Currency] entry (CUP, USD,
- *   MLC, EUR in this codebase).
+ * - Currency — [FilterChip] row over every [com.vida.domain.model.Currency] entry.
  * - [OutlinedTextField] `WOC_FIELD_WALLET_BALANCE` — decimal, optional,
  *   empty means 0.00. Inline error on parse failure.
  */
@@ -35,7 +33,7 @@ import com.vida.feature.onboarding.OnboardingCopy.WOC_FIELD_WALLET_BALANCE
 fun WalletForm(
     state: WalletOrCardUiState.Editing,
     onNameChange: (String) -> Unit,
-    onCurrencyChange: (Currency) -> Unit,
+    onCurrencyChange: (String) -> Unit,
     onBalanceChange: (String) -> Unit,
     isSaving: Boolean,
     modifier: Modifier = Modifier,
@@ -65,10 +63,10 @@ fun WalletForm(
         androidx.compose.foundation.layout.Row(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Currency.entries.forEach { curr ->
+            com.vida.domain.model.Currency.entries.forEach { curr ->
                 FilterChip(
-                    selected = state.currency == curr,
-                    onClick = { onCurrencyChange(curr) },
+                    selected = state.currency == curr.code,
+                    onClick = { onCurrencyChange(curr.code) },
                     enabled = !isSaving,
                     label = { Text(curr.code) },
                 )

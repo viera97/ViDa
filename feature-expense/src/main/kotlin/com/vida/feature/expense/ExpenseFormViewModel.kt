@@ -8,6 +8,7 @@ import com.vida.domain.model.Money
 import com.vida.domain.model.SourceType
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.expense.AddExpense
 import com.vida.domain.usecase.expense.GetExpense
 import com.vida.domain.usecase.expense.UpdateExpense
@@ -46,6 +47,7 @@ class ExpenseFormViewModel @Inject constructor(
     private val listCards: ListCards,
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ExpenseFormUiState>(ExpenseFormUiState.Loading)
@@ -100,6 +102,7 @@ class ExpenseFormViewModel @Inject constructor(
                 listWallets().first() // ensure wallets are loaded for source-label display
                 val cards = listCards().first()
                 val stashes = listStashes().first()
+                val currencies = listCurrencies().first()
 
                 val sources = buildList {
                     for (wallet in listWallets().first()) {
@@ -131,7 +134,7 @@ class ExpenseFormViewModel @Inject constructor(
                                 type = SourceType.STASH,
                                 label = stash.name,
                                 subtitle = null,
-                                currency = stash.currency,
+                                currency = stash.currency.code,
                             ),
                         )
                     }
@@ -157,6 +160,7 @@ class ExpenseFormViewModel @Inject constructor(
                     ),
                     sources = sources,
                     categories = categories,
+                    availableCurrencies = currencies.map { Currency.fromCode(it.code) }.distinctBy { it.code },
                 )
                 lastReadyState = ready
                 _uiState.value = ready
@@ -188,6 +192,7 @@ class ExpenseFormViewModel @Inject constructor(
                 val wallets = listWallets().first()
                 val cards = listCards().first()
                 val stashes = listStashes().first()
+                val currencies = listCurrencies().first()
 
                 val sources = buildList {
                     for (wallet in wallets) {
@@ -222,7 +227,7 @@ class ExpenseFormViewModel @Inject constructor(
                                 type = SourceType.STASH,
                                 label = stash.name,
                                 subtitle = null,
-                                currency = stash.currency,
+                                currency = stash.currency.code,
                             ),
                         )
                     }
@@ -233,16 +238,14 @@ class ExpenseFormViewModel @Inject constructor(
                     return@launch
                 }
 
-                val defaultSource = sources.first() // first wallet
                 val ready = ExpenseFormUiState.Ready(
                     form = FormFields(
-                        currency = defaultSource.currency,
-                        sourceType = SourceType.WALLET,
-                        sourceId = defaultSource.id,
-                        hasSourceSelected = true,
+                        currency = Currency.CUP,
+                        hasSourceSelected = false,
                     ),
                     sources = sources,
                     categories = categories,
+                    availableCurrencies = currencies.map { Currency.fromCode(it.code) }.distinctBy { it.code },
                 )
                 lastReadyState = ready
                 _uiState.value = ready
@@ -307,7 +310,7 @@ fun onSourceSelected(type: SourceType, id: Long?) {
                     sourceType = type,
                     sourceId = id,
                     hasSourceSelected = true,
-                    currency = sourceCurrency ?: form.currency,
+                    currency = sourceCurrency?.let { Currency.fromCode(it) } ?: form.currency,
                 )
             },
             newErrors = validateSource(type, id, hasSourceSelected = true),
@@ -338,8 +341,12 @@ fun onSourceSelected(type: SourceType, id: Long?) {
         val source = ready.sources.find {
             it.type == ready.form.sourceType && it.id == ready.form.sourceId
         } ?: return null
-        return if (source.currency != ready.form.currency) {
-            "La moneda debe coincidir con la fuente (${source.currency.code})"
+        // If the source uses a currency code unknown to the enum (custom/user-created
+        // currency), bypass the mismatch check — the enum can't represent it and the
+        // currency field is hidden when source is selected so the user can't fix it.
+        if (Currency.values().none { it.code.equals(source.currency, ignoreCase = true) }) return null
+        return if (source.currency != ready.form.currency.code) {
+            "La moneda debe coincidir con la fuente (${source.currency})"
         } else null
     }
 

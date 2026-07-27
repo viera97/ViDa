@@ -14,6 +14,7 @@ import com.vida.domain.model.Stash
 import com.vida.domain.model.Wallet
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.expense.RecordExpense
 import com.vida.domain.usecase.income.RecordIncome
 import com.vida.domain.usecase.recurring.AddRecurringExpense
@@ -37,12 +38,15 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.math.RoundingMode
 import java.time.Instant
@@ -81,6 +85,7 @@ class RecurringListViewModel @Inject constructor(
     private val listCards: ListCards,
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecurringListUiState>(RecurringListUiState.Loading)
@@ -110,6 +115,11 @@ class RecurringListViewModel @Inject constructor(
 
     private val _wallets = MutableStateFlow<List<Wallet>>(emptyList())
     val wallets: StateFlow<List<Wallet>> = _wallets.asStateFlow()
+
+    /** Reactive list of currency codes for recurring form dropdowns. */
+    val currencyCodes: StateFlow<List<String>> = listCurrencies()
+        .map { currencies -> currencies.map { it.code } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Holds the active recurring-templates collection job so retries don't stack. */
     private var recurringJob: Job? = null
@@ -525,7 +535,7 @@ class RecurringListViewModel @Inject constructor(
         return RecurringDisplayItem(
             id = id,
             amountFormatted = scale.toPlainString(),
-            currencyCode = currency.code,
+            currencyCode = currency,
             categoryName = categoriesById[categoryId]?.name ?: categoryId.toString(),
             frequencyLabel = frequency.toSpanishLabel(),
             sourceType = sourceType,
@@ -548,7 +558,7 @@ class RecurringListViewModel @Inject constructor(
         return RecurringDisplayItem(
             id = id,
             amountFormatted = scale.toPlainString(),
-            currencyCode = currency.code,
+            currencyCode = currency,
             categoryName = "",
             frequencyLabel = frequency.toSpanishLabel(),
             sourceType = sourceType,

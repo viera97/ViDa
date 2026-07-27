@@ -53,7 +53,7 @@ class IncomeFormViewModelTest {
             number = testCardNumber,
             bank = "Banco kubo",
             type = CardType.DEBIT,
-            currency = Currency.USD,
+            currency = "USD",
             expirationDate = LocalDate.of(2028, 12, 31),
         ),
     )
@@ -69,7 +69,7 @@ class IncomeFormViewModelTest {
     )
 
     private val sampleWallets = listOf(
-        Wallet(id = 1L, name = "Efectivo", currency = Currency.CUP),
+        Wallet(id = 1L, name = "Efectivo", currency = "CUP"),
     )
 
     @OptIn(ExperimentalCoroutinesApi::class)

@@ -30,7 +30,7 @@ class GenerateRecurringExpenseTest {
     ): RecurringExpense = RecurringExpense(
         id = id,
         amount = Money(BigDecimal("2000"), Currency.CUP),
-        currency = Currency.CUP,
+        currency = "CUP",
         categoryId = 3L,
         sourceType = sourceType,
         sourceId = sourceId,

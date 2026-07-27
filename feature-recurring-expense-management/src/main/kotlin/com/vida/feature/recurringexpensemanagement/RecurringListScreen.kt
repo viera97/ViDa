@@ -224,6 +224,7 @@ fun RecurringListScreen(
             wallets = wallets,
             cards = cards,
             stashes = stashes,
+
             onDismiss = { showAddDialog = false },
             onSave = { expense -> viewModel.onAdd(expense) },
         )
@@ -233,7 +234,7 @@ fun RecurringListScreen(
     editingEntity?.let { entity ->
         RecurringFormDialog(
             initialAmount = entity.amount.amount.toPlainString(),
-            initialCurrency = entity.currency,
+            initialCurrencyCode = entity.currency,
             initialCategoryId = entity.categoryId,
             initialSourceType = entity.sourceType,
             initialSourceId = entity.sourceId,
@@ -248,6 +249,7 @@ fun RecurringListScreen(
             wallets = wallets,
             cards = cards,
             stashes = stashes,
+
             onDismiss = { editingEntity = null },
             onSave = { formExpense ->
                 val merged = entity.copy(
@@ -275,6 +277,7 @@ fun RecurringListScreen(
             wallets = wallets,
             cards = cards,
             stashes = stashes,
+
             onDismiss = { showAddIncomeDialog = false },
             onSave = { income -> viewModel.onAddIncome(income) },
         )
@@ -284,7 +287,7 @@ fun RecurringListScreen(
     editingIncomeEntity?.let { entity ->
         RecurringIncomeFormDialog(
             initialAmount = entity.amount.amount.toPlainString(),
-            initialCurrency = entity.currency,
+            initialCurrencyCode = entity.currency,
             initialSourceType = entity.sourceType,
             initialSourceId = entity.sourceId,
             initialDescription = entity.description,
@@ -297,6 +300,7 @@ fun RecurringListScreen(
             wallets = wallets,
             cards = cards,
             stashes = stashes,
+
             onDismiss = { editingIncomeEntity = null },
             onSave = { formIncome ->
                 val merged = entity.copy(

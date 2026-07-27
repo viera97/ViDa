@@ -75,7 +75,7 @@ fun IncomeFormDialog(
     var lastReady by remember { mutableStateOf<IncomeFormUiState.Ready?>(null) }
     (uiState as? IncomeFormUiState.Ready)?.let { lastReady = it }
 
-    // Bottom sheet visibility flag.
+    // Bottom sheet visibility flags.
     var showSourceSheet by remember { mutableStateOf(false) }
 
     // Reset/load VM on open and observe Success to auto-dismiss.
@@ -158,10 +158,8 @@ fun IncomeFormDialog(
 
                         AmountSection(
                             amount = ready.form.amount,
-                            currency = ready.form.currency,
                             amountError = ready.validationErrors["amount"],
                             onAmountChanged = viewModel::onAmountChanged,
-                            onCurrencyChanged = viewModel::onCurrencyChanged,
                         )
                         DescriptionInput(
                             value = ready.form.description,
@@ -256,4 +254,6 @@ fun IncomeFormDialog(
             )
         }
     }
+
+    // Currency is auto-determined by the source — no standalone currency picker.
 }

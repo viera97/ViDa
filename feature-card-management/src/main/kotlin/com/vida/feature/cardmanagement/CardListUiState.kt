@@ -1,7 +1,6 @@
 package com.vida.feature.cardmanagement
 
 import com.vida.domain.model.CardType
-import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import java.time.LocalDate
 
@@ -54,7 +53,7 @@ data class CardDisplayItem(
     val last4: String,
     val bank: String,
     val type: CardType,
-    val currency: Currency,
+    val currency: String,
     val expiryFormatted: String,
     val expiry: LocalDate,
     val note: String?,

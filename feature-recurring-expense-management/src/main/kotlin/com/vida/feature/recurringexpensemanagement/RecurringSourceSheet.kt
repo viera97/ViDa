@@ -145,7 +145,7 @@ private fun SourceRow(
         },
         trailingContent = {
             Badge {
-                Text(source.currency.code)
+                Text(source.currency)
             }
         },
         modifier = Modifier.clickable(onClick = onClick),

@@ -44,14 +44,15 @@ class CardRepositoryImpl @Inject constructor(
      * [com.vida.feature.cardmanagement.CardListViewModel]).
      */
     override fun observeBalance(id: Long): Flow<Money> = flow {
-        val currency = dao.getById(id)?.currency ?: Currency.CUP
+        val currencyCode = dao.getById(id)?.currency ?: "CUP"
+        val currencyEnum = Currency.values().firstOrNull { it.code.equals(currencyCode, ignoreCase = true) } ?: Currency.CUP
         emitAll(
             balanceDao.getCardBalance(id)
                 .map { entity ->
                     if (entity != null) {
-                        Money.fromMinorUnits(entity.totalCupMinor, currency)
+                        Money.fromMinorUnits(entity.totalCupMinor, currencyEnum)
                     } else {
-                        Money(BigDecimal.ZERO, currency)
+                        Money(BigDecimal.ZERO, currencyEnum)
                     }
                 },
         )

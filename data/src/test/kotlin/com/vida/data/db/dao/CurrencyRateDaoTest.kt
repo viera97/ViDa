@@ -5,7 +5,6 @@ import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import com.vida.data.db.AppDatabase
 import com.vida.data.db.entity.CurrencyRateEntity
-import com.vida.domain.model.Currency
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -39,7 +38,7 @@ class CurrencyRateDaoTest {
 
     @Test
     fun `upsert then observeAll emits entity`() = runTest {
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
+        dao.upsert(aRate("USD", "CUP", 24.0, 100L))
         dao.observeAll().test {
             val items = awaitItem()
             assertEquals(1, items.size)
@@ -50,9 +49,9 @@ class CurrencyRateDaoTest {
 
     @Test
     fun `getById not available but getRate returns latest before cutoff`() = runTest {
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.5, 200L))
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 25.0, 300L))
+        dao.upsert(aRate("USD", "CUP", 24.0, 100L))
+        dao.upsert(aRate("USD", "CUP", 24.5, 200L))
+        dao.upsert(aRate("USD", "CUP", 25.0, 300L))
 
         val at250 = dao.getRate("USD", "CUP", 250L)
         assertEquals(200L, at250!!.effectiveDate)
@@ -67,22 +66,22 @@ class CurrencyRateDaoTest {
 
     @Test
     fun `getRate returns null when cutoff is before any snapshot`() = runTest {
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
+        dao.upsert(aRate("USD", "CUP", 24.0, 100L))
         assertNull(dao.getRate("USD", "CUP", 50L))
     }
 
     @Test
     fun `getRate returns null for missing pair`() = runTest {
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
+        dao.upsert(aRate("USD", "CUP", 24.0, 100L))
         assertNull(dao.getRate("USD", "MLC", 500L))
         assertNull(dao.getRate("MLC", "USD", 500L))
     }
 
     @Test
     fun `observeRateHistory returns snapshots ordered newest first`() = runTest {
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 24.5, 200L))
-        dao.upsert(aRate(Currency.USD, Currency.CUP, 25.0, 300L))
+        dao.upsert(aRate("USD", "CUP", 24.0, 100L))
+        dao.upsert(aRate("USD", "CUP", 24.5, 200L))
+        dao.upsert(aRate("USD", "CUP", 25.0, 300L))
 
         val history = dao.observeRateHistory("USD", "CUP").first()
         assertEquals(3, history.size)
@@ -99,7 +98,7 @@ class CurrencyRateDaoTest {
 
     @Test
     fun `delete removes row`() = runTest {
-        val id = dao.upsert(aRate(Currency.USD, Currency.CUP, 24.0, 100L))
+        val id = dao.upsert(aRate("USD", "CUP", 24.0, 100L))
         dao.delete(id)
         assertNull(dao.getRate("USD", "CUP", 200L))
     }
@@ -113,7 +112,7 @@ class CurrencyRateDaoTest {
         }
     }
 
-    private fun aRate(from: Currency, to: Currency, rate: Double, effectiveDate: Long) =
+    private fun aRate(from: String, to: String, rate: Double, effectiveDate: Long) =
         CurrencyRateEntity(
             fromCurrency = from,
             toCurrency = to,

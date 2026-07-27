@@ -106,7 +106,7 @@ class RecurringExpenseRepositoryImplTest {
     private fun aRecurring() = RecurringExpense(
         id = 0L,
         amount = Money.of("50.00", Currency.CUP),
-        currency = Currency.CUP,
+        currency = "CUP",
         categoryId = 1L,
         sourceType = SourceType.WALLET,
         sourceId = null,

@@ -2,12 +2,10 @@ package com.vida.feature.walletmanagement
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -19,7 +17,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.vida.domain.model.Currency
 
 /**
  * AlertDialog for editing the singleton wallet's name and currency.
@@ -30,7 +27,7 @@ import com.vida.domain.model.Currency
  *
  * Fields:
  * - Name ([OutlinedTextField], required, 1–100 chars, non-blank)
- * - Currency ([FilterChip] row: CUP / USD / MLC)
+ * - Currency ([ExposedDropdownMenuBox], required, from available currency list)
  * - Balance ([OutlinedTextField], optional, decimal, default 0.00). The user-facing
  *   label is "Balance" because the stored value IS the displayed balance — transfers
  *   no longer auto-update it (Option B).
@@ -39,25 +36,32 @@ import com.vida.domain.model.Currency
  * or name exceeds 100 characters.
  *
  * @param initialName Pre-populated name (wallet name or "Billetera" default).
- * @param initialCurrency Default [Currency] selection.
+ * @param initialCurrency Default currency code string.
  * @param balance Pre-populated balance string (decimal format).
  * @param isSaving Whether a save operation is in-flight (disables save button).
+ * @param availableCurrencies List of currency codes for the dropdown.
  * @param onDismiss Called when the dialog is dismissed.
- * @param onSave Called with (name, currency, balanceMinor) when the user confirms.
+ * @param onSave Called with (name, currencyCode, balanceMinor) when the user confirms.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WalletEditDialog(
-    initialName: String = "Billetera",
-    initialCurrency: Currency = Currency.CUP,
+    initialName: String = "",
+    initialCurrency: String = "CUP",
     balance: String = "",
+    isEdit: Boolean = false,
     isSaving: Boolean = false,
+    availableCurrencies: List<String> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (name: String, currency: Currency, balanceMinor: Long) -> Unit,
+    onSave: (name: String, currencyCode: String, balanceMinor: Long) -> Unit,
 ) {
     var name by remember { mutableStateOf(initialName) }
-    var currency by remember { mutableStateOf(initialCurrency) }
+    var selectedCurrency by remember { mutableStateOf(
+        if (initialCurrency.isNotEmpty() && initialCurrency in availableCurrencies) initialCurrency
+        else availableCurrencies.firstOrNull() ?: "CUP"
+    ) }
     var balanceInput by remember { mutableStateOf(balance) }
+    var currencyDropdownExpanded by remember { mutableStateOf(false) }
 
     // ── Validation ───────────────────────────────────────────────────────────
 
@@ -74,7 +78,7 @@ fun WalletEditDialog(
 
     AlertDialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
-        title = { Text("Editar billetera") },
+        title = { Text(if (isEdit) "Editar billetera" else "Agregar billetera") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
@@ -91,17 +95,11 @@ fun WalletEditDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                // Currency — FilterChip row
-                Text("Moneda")
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = currency == curr,
-                            onClick = { currency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
-                }
+                // Currency — trigger field
+                WalletCurrencySelector(
+                    selectedCurrencyCode = selectedCurrency,
+                    onShowSheet = { currencyDropdownExpanded = true },
+                )
 
                 // Balance
                 OutlinedTextField(
@@ -118,7 +116,7 @@ fun WalletEditDialog(
             TextButton(
                 onClick = {
                     val minorUnits = balanceInput.toDoubleOrNull()?.let { (it * 100).toLong() } ?: 0L
-                    onSave(name.trim(), currency, minorUnits)
+                    onSave(name.trim(), selectedCurrency, minorUnits)
                 },
                 enabled = isSaveEnabled,
             ) {
@@ -131,4 +129,17 @@ fun WalletEditDialog(
             }
         },
     )
+
+    // Currency bottom sheet — rendered after the AlertDialog so it overlays correctly.
+    if (currencyDropdownExpanded) {
+        WalletCurrencyPickerSheet(
+            availableCurrencies = availableCurrencies,
+            selectedCurrencyCode = selectedCurrency,
+            onDismiss = { currencyDropdownExpanded = false },
+            onCurrencySelected = { code ->
+                selectedCurrency = code
+                currencyDropdownExpanded = false
+            },
+        )
+    }
 }

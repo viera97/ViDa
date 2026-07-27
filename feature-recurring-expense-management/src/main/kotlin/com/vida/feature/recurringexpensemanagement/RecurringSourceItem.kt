@@ -1,7 +1,6 @@
 package com.vida.feature.recurringexpensemanagement
 
 import com.vida.domain.model.Card
-import com.vida.domain.model.Currency
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Stash
 import com.vida.domain.model.Wallet
@@ -19,14 +18,14 @@ import com.vida.domain.model.Wallet
  *   [SourceType.CARD]).
  * @property label Display name (e.g. "Billetera principal", "Banco kubo").
  * @property subtitle Optional supplementary text (e.g. masked card number).
- * @property currency The source's native currency.
+ * @property currency The source's native currency code.
  */
 data class RecurringSourceItem(
     val id: Long?,
     val type: SourceType,
     val label: String,
     val subtitle: String? = null,
-    val currency: Currency,
+    val currency: String,
 )
 
 /** Builds the [RecurringSourceItem] list shown in the picker. */
@@ -58,6 +57,6 @@ internal fun List<Stash>.toStashSourceItems(): List<RecurringSourceItem> = map {
         type = SourceType.STASH,
         label = stash.name,
         subtitle = null,
-        currency = stash.currency,
+        currency = stash.currency.code,
     )
 }

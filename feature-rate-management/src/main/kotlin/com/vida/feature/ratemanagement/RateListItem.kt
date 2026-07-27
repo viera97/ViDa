@@ -130,7 +130,7 @@ fun RateListItem(
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 Spacer(modifier = Modifier.padding(top = 10.dp))
                 Text(
-                    text = "${inv.fromCurrency.code} → ${inv.toCurrency.code}",
+                    text = "${inv.fromCurrency} → ${inv.toCurrency}",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

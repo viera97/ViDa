@@ -12,7 +12,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -27,7 +26,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.vida.domain.model.Currency
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneId
@@ -36,8 +34,8 @@ import java.time.ZoneId
  * Form dialog for creating or editing a currency rate.
  *
  * Fields:
- * - From currency ([FilterChip] row: CUP / USD / MLC)
- * - To currency ([FilterChip] row: CUP / USD / MLC)
+ * - From currency ([ExposedDropdownMenuBox], from user's currency list)
+ * - To currency ([ExposedDropdownMenuBox], from user's currency list)
  * - Rate ([OutlinedTextField], BigDecimal, required, > 0)
  * - Provider ([OutlinedTextField], optional, defaults to "Manual")
  * - Date ([DatePickerDialog], default = today for new rates)
@@ -45,32 +43,42 @@ import java.time.ZoneId
  * Save is disabled when [isSaving] is true, rate is invalid (blank,
  * not a valid BigDecimal, zero, or negative), or from == to.
  *
- * @param initialFrom Default "from" currency (USD).
- * @param initialTo Default "to" currency (CUP).
+ * @param initialFrom Default "from" currency code ("USD").
+ * @param initialTo Default "to" currency code ("CUP").
  * @param initialRate Pre-populated rate string (empty for add).
  * @param initialProvider Pre-populated provider string ("Manual" for add).
  * @param initialDate Pre-populated date (Instant.now() for add).
  * @param isEdit Whether this is an edit form (affects title).
  * @param isSaving Whether a save operation is in-flight (disables save button).
+ * @param availableCurrencies Currency codes available for selection.
  * @param onDismiss Called when the dialog is dismissed.
- * @param onSave Called with (from, to, rate, date, provider) when the user confirms.
+ * @param onSave Called with (fromCode, toCode, rate, date, provider) when the user confirms.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RateFormDialog(
-    initialFrom: Currency = Currency.USD,
-    initialTo: Currency = Currency.CUP,
+    initialFrom: String = "USD",
+    initialTo: String = "CUP",
     initialRate: String = "",
     initialProvider: String = "Manual",
     initialDate: Instant = Instant.now(),
     isEdit: Boolean = false,
     isSaving: Boolean = false,
     duplicateError: Boolean = false,
+    availableCurrencies: List<String> = emptyList(),
     onDismiss: () -> Unit,
-    onSave: (from: Currency, to: Currency, rate: BigDecimal, date: Instant, provider: String) -> Unit,
+    onSave: (fromCode: String, toCode: String, rate: BigDecimal, date: Instant, provider: String) -> Unit,
 ) {
-    var fromCurrency by remember { mutableStateOf(initialFrom) }
-    var toCurrency by remember { mutableStateOf(initialTo) }
+    val defaultFrom = if (availableCurrencies.contains(initialFrom)) initialFrom
+        else availableCurrencies.firstOrNull() ?: "USD"
+
+    val defaultTo = if (availableCurrencies.contains(initialTo) && defaultFrom != initialTo) initialTo
+        else availableCurrencies.firstOrNull { it != defaultFrom } ?: "CUP"
+
+    var fromCurrency by remember { mutableStateOf(defaultFrom) }
+    var toCurrency by remember { mutableStateOf(defaultTo) }
+    var fromExpanded by remember { mutableStateOf(false) }
+    var toExpanded by remember { mutableStateOf(false) }
     var rateText by remember { mutableStateOf(initialRate) }
     var providerText by remember { mutableStateOf(initialProvider) }
     var selectedDate by remember { mutableStateOf(initialDate) }
@@ -113,35 +121,46 @@ fun RateFormDialog(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                // From currency — FilterChip row
-                Text(
-                    text = "De",
-                    style = MaterialTheme.typography.bodyMedium,
+                // From currency — dropdown
+                CurrencySelector(
+                    selectedCurrencyCode = fromCurrency,
+                    label = "De",
+                    onShowSheet = { fromExpanded = true },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = fromCurrency == curr,
-                            onClick = { fromCurrency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
+                if (fromExpanded) {
+                    CurrencyPickerSheet(
+                        availableCurrencies = availableCurrencies,
+                        selectedCurrencyCode = fromCurrency,
+                        onDismiss = { fromExpanded = false },
+                        onCurrencySelected = { code ->
+                            fromCurrency = code
+                            // If "To" equals the new "From", auto-switch "To"
+                            if (toCurrency == code) {
+                                toCurrency = availableCurrencies.firstOrNull { it != code } ?: "CUP"
+                            }
+                            fromExpanded = false
+                        },
+                    )
                 }
 
-                // To currency — FilterChip row
-                Text(
-                    text = "A",
-                    style = MaterialTheme.typography.bodyMedium,
+                // To currency — dropdown
+                CurrencySelector(
+                    selectedCurrencyCode = toCurrency,
+                    label = "A",
+                    onShowSheet = { toExpanded = true },
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Currency.entries.forEach { curr ->
-                        FilterChip(
-                            selected = toCurrency == curr,
-                            onClick = { toCurrency = curr },
-                            label = { Text(curr.code) },
-                        )
-                    }
+                if (toExpanded) {
+                    CurrencyPickerSheet(
+                        availableCurrencies = availableCurrencies,
+                        selectedCurrencyCode = toCurrency,
+                        onDismiss = { toExpanded = false },
+                        onCurrencySelected = { code ->
+                            toCurrency = code
+                            toExpanded = false
+                        },
+                    )
                 }
+
                 if (fromEqualsTo) {
                     Text(
                         text = "Las monedas deben ser diferentes",

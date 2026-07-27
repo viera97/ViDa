@@ -47,7 +47,8 @@ class WalletRepositoryImpl @Inject constructor(
      * [com.vida.feature.walletmanagement.WalletViewModel]).
      */
     override fun observeBalance(id: Long): Flow<Money> = flow {
-        val currency = dao.getById(id)?.currency ?: Currency.CUP
+        val currencyCode = dao.getById(id)?.currency ?: "CUP"
+        val currency = Currency.fromCode(currencyCode)
         emitAll(
             balanceDao.getWalletBalance(id)
                 .map { entity ->

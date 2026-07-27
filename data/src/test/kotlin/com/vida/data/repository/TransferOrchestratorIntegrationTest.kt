@@ -50,13 +50,13 @@ class TransferOrchestratorIntegrationTest {
             transferMapper = TransferMapper,
         )
 
-        database.walletDao().upsert(WalletEntity(id = 1L, currency = Currency.CUP))
+        database.walletDao().upsert(WalletEntity(id = 1L, currency = "CUP"))
         cardId = database.cardDao().upsert(
             CardEntity(
                 maskedNumber = "123456******7890",
                 bank = "POP",
                 type = com.vida.domain.model.CardType.DEBIT,
-                currency = Currency.CUP,
+                currency = "CUP",
                 note = null,
                 expirationDate = LocalDate.of(2028, 12, 31),
             ),

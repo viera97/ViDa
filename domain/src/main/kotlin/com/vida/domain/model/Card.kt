@@ -13,7 +13,7 @@ data class Card(
     val number: CardNumber,
     val bank: String,
     val type: CardType,
-    val currency: Currency,
+    val currency: String,
     val note: String? = null,
     val expirationDate: LocalDate,
     val balance: Money = Money.ZERO_CUP,

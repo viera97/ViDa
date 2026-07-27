@@ -37,7 +37,7 @@ import java.time.LocalDate
 data class RecurringIncome(
     val id: Long = 0L,
     val amount: Money,
-    val currency: Currency,
+    val currency: String,
     val sourceType: SourceType,
     val sourceId: Long? = null,
     val description: String,

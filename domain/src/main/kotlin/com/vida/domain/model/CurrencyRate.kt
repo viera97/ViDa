@@ -4,7 +4,7 @@ import java.math.BigDecimal
 import java.time.Instant
 
 /**
- * An exchange rate snapshot between two [Currency]s at a point in time.
+ * An exchange rate snapshot between two currency codes at a point in time.
  *
  * Invariants enforced in `init {}`:
  *
@@ -16,16 +16,16 @@ import java.time.Instant
  * snapshots are kept ordered by `updatedAt DESC`.
  *
  * @property id row id (0 means unsaved)
- * @property fromCurrency the "from" side of the pair
- * @property toCurrency the "to" side of the pair
+ * @property fromCurrency currency code for the "from" side of the pair (e.g. "USD")
+ * @property toCurrency currency code for the "to" side of the pair (e.g. "CUP")
  * @property rate multiplier such that `1 fromCurrency == rate toCurrency`
  * @property updatedAt when this snapshot was recorded (UTC)
  * @property provider source from which the rate was obtained; defaults to "Manual"
  */
 data class CurrencyRate(
     val id: Long = 0L,
-    val fromCurrency: Currency,
-    val toCurrency: Currency,
+    val fromCurrency: String,
+    val toCurrency: String,
     val rate: BigDecimal,
     val updatedAt: Instant,
     val provider: String = "Manual",

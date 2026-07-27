@@ -93,7 +93,7 @@ class CardDaoTest {
         maskedNumber = "123456******7890",
         bank = "Test Bank",
         type = CardType.DEBIT,
-        currency = Currency.CUP,
+        currency = "CUP",
         note = null,
         expirationDate = LocalDate.of(2028, 12, 31),
     )

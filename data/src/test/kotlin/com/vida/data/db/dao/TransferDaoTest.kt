@@ -43,7 +43,7 @@ class TransferDaoTest {
                 maskedNumber = "123456******7890",
                 bank = "POP",
                 type = CardType.DEBIT,
-                currency = Currency.USD,
+                currency = "USD",
                 note = null,
                 expirationDate = LocalDate.of(2028, 12, 31),
             ),
@@ -56,7 +56,7 @@ class TransferDaoTest {
                 currency = Currency.USD,
             ),
         )
-        database.walletDao().upsert(WalletEntity(id = 1L, currency = Currency.CUP))
+        database.walletDao().upsert(WalletEntity(id = 1L, currency = "CUP"))
     }
 
     @After

@@ -305,7 +305,7 @@ class ExpenseDaoTest {
                 maskedNumber = "123456******7890",
                 bank = "POP",
                 type = CardType.DEBIT,
-                currency = Currency.USD,
+                currency = "USD",
                 note = null,
                 expirationDate = LocalDate.of(2028, 12, 31),
             ),

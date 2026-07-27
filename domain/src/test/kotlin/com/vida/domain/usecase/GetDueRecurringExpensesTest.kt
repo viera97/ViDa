@@ -31,7 +31,7 @@ class GetDueRecurringExpensesTest {
     ): RecurringExpense = RecurringExpense(
         id = id,
         amount = oneCup,
-        currency = Currency.CUP,
+        currency = "CUP",
         categoryId = 1L,
         sourceType = SourceType.WALLET,
         description = "X",

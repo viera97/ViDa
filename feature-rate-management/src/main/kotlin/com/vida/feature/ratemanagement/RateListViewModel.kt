@@ -2,20 +2,24 @@ package com.vida.feature.ratemanagement
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import com.vida.domain.usecase.rate.AddCurrencyRate
 import com.vida.domain.usecase.rate.DeleteCurrencyRate
 import com.vida.domain.usecase.rate.ListCurrencyRates
 import com.vida.domain.usecase.rate.UpdateCurrencyRate
+import com.vida.domain.usecase.currency.ListCurrencies
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import java.math.RoundingMode
@@ -44,6 +48,7 @@ class RateListViewModel @Inject constructor(
     private val addCurrencyRate: AddCurrencyRate,
     private val updateCurrencyRate: UpdateCurrencyRate,
     private val deleteCurrencyRate: DeleteCurrencyRate,
+    listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RateListUiState>(RateListUiState.Loading)
@@ -66,6 +71,11 @@ class RateListViewModel @Inject constructor(
     private val _availableProviders = MutableStateFlow<List<String>>(emptyList())
     val availableProviders: StateFlow<List<String>> = _availableProviders.asStateFlow()
 
+    /** Reactive list of currency codes for the rate form dropdowns. */
+    val currencyCodes: StateFlow<List<String>> = listCurrencies()
+        .map { currencies -> currencies.map { it.code } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     init {
         loadRates()
     }
@@ -81,9 +91,9 @@ class RateListViewModel @Inject constructor(
      * On success the list is refetched and [RateNavEvent.SaveSuccess] is
      * emitted. On error a toast is shown and the list is preserved.
      */
-    fun onAdd(from: Currency, to: Currency, rate: BigDecimal, updatedAt: Instant, provider: String) {
+    fun onAdd(fromCode: String, toCode: String, rate: BigDecimal, updatedAt: Instant, provider: String) {
         if (_isSaving.value) return
-        if (from == to) return
+        if (fromCode == toCode) return
         if (rate.signum() <= 0) return
 
         viewModelScope.launch {
@@ -92,8 +102,8 @@ class RateListViewModel @Inject constructor(
                 // Duplicate check on the primary pair
                 val existingRates = listCurrencyRates().first()
                 val isDuplicate = existingRates.any { r ->
-                    r.fromCurrency == from &&
-                        r.toCurrency == to &&
+                    r.fromCurrency == fromCode &&
+                        r.toCurrency == toCode &&
                         r.provider == provider
                 }
                 if (isDuplicate) {
@@ -105,8 +115,8 @@ class RateListViewModel @Inject constructor(
                 addCurrencyRate(
                     CurrencyRate(
                         id = 0L,
-                        fromCurrency = from,
-                        toCurrency = to,
+                        fromCurrency = fromCode,
+                        toCurrency = toCode,
                         rate = rate,
                         updatedAt = updatedAt,
                         provider = provider,
@@ -121,8 +131,8 @@ class RateListViewModel @Inject constructor(
                     addCurrencyRate(
                         CurrencyRate(
                             id = 0L,
-                            fromCurrency = to,
-                            toCurrency = from,
+                            fromCurrency = toCode,
+                            toCurrency = fromCode,
                             rate = inverseRate,
                             updatedAt = updatedAt,
                             provider = provider,
@@ -157,14 +167,14 @@ class RateListViewModel @Inject constructor(
      */
     fun onEdit(
         id: Long,
-        from: Currency,
-        to: Currency,
+        fromCode: String,
+        toCode: String,
         rate: BigDecimal,
         updatedAt: Instant,
         provider: String,
     ) {
         if (_isSaving.value) return
-        if (from == to) return
+        if (fromCode == toCode) return
         if (rate.signum() <= 0) return
 
         viewModelScope.launch {
@@ -178,8 +188,8 @@ class RateListViewModel @Inject constructor(
                 updateCurrencyRate(
                     CurrencyRate(
                         id = id,
-                        fromCurrency = from,
-                        toCurrency = to,
+                        fromCurrency = fromCode,
+                        toCurrency = toCode,
                         rate = rate,
                         updatedAt = updatedAt,
                         provider = provider,
@@ -189,7 +199,7 @@ class RateListViewModel @Inject constructor(
                 // 2. Refresh inverse: find existing one for the NEW pair, if any
                 val current = listCurrencyRates().first()
                 val newInverse = current.firstOrNull {
-                    it.fromCurrency == to && it.toCurrency == from
+                    it.fromCurrency == toCode && it.toCurrency == fromCode
                 }
                 val newInverseRate = inverseOf(rate)
                 if (newInverse != null) {
@@ -207,8 +217,8 @@ class RateListViewModel @Inject constructor(
                         addCurrencyRate(
                             CurrencyRate(
                                 id = 0L,
-                                fromCurrency = to,
-                                toCurrency = from,
+                                fromCurrency = toCode,
+                                toCurrency = fromCode,
                                 rate = newInverseRate,
                                 updatedAt = updatedAt,
                                 provider = provider,
@@ -219,7 +229,7 @@ class RateListViewModel @Inject constructor(
 
                 // 3. If the (from, to) pair changed, the OLD inverse is now
                 //    stale and must be removed.
-                if (oldFrom != null && oldTo != null && (oldFrom != from || oldTo != to)) {
+                if (oldFrom != null && oldTo != null && (oldFrom != fromCode || oldTo != toCode)) {
                     val staleInverse = current.firstOrNull {
                         it.fromCurrency == oldTo && it.toCurrency == oldFrom
                     }
@@ -293,14 +303,14 @@ class RateListViewModel @Inject constructor(
      * the list logic.
      */
     fun getRateForConversion(
-        from: Currency,
-        to: Currency,
+        fromCode: String,
+        toCode: String,
         provider: String = "Manual",
     ): CurrencyRate? {
         return cachedRates
             .filter {
-                it.fromCurrency == from &&
-                    it.toCurrency == to &&
+                it.fromCurrency == fromCode &&
+                    it.toCurrency == toCode &&
                     it.provider == provider
             }
             .maxByOrNull { it.updatedAt }
@@ -382,7 +392,7 @@ class RateListViewModel @Inject constructor(
         // is deterministic.
         val primaryDirection = latestPerDirection.maxWithOrNull(
             compareBy<CurrencyRate> { it.updatedAt }
-                .thenBy { "${it.fromCurrency.code} → ${it.toCurrency.code}" },
+                .thenBy { "${it.fromCurrency} → ${it.toCurrency}" },
         )!!
         val inverseDirection = latestPerDirection.firstOrNull {
             it.fromCurrency == primaryDirection.toCurrency &&
@@ -393,7 +403,7 @@ class RateListViewModel @Inject constructor(
             id = primaryDirection.id,
             fromCurrency = primaryDirection.fromCurrency,
             toCurrency = primaryDirection.toCurrency,
-            pairLabel = "${primaryDirection.fromCurrency.code} → ${primaryDirection.toCurrency.code}",
+            pairLabel = "${primaryDirection.fromCurrency} → ${primaryDirection.toCurrency}",
             rate = primaryDirection.rate,
             rateFormatted = formatRate(primaryDirection.rate),
             provider = primaryDirection.provider,
@@ -416,10 +426,8 @@ class RateListViewModel @Inject constructor(
      * but keeps different providers as separate buckets so BCV and Manual
      * rates for the same pair render as two distinct cards.
      */
-    private fun groupKey(from: Currency, to: Currency, provider: String): String {
-        val a = from.code
-        val b = to.code
-        val pair = if (a <= b) "$a-$b" else "$b-$a"
+    private fun groupKey(from: String, to: String, provider: String): String {
+        val pair = if (from <= to) "$from-$to" else "$to-$from"
         return "$pair@$provider"
     }
 

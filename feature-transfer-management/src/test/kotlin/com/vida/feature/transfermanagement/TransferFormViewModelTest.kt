@@ -66,7 +66,7 @@ class TransferFormViewModelTest {
             number = testCardNumber,
             bank = "Banco kubo",
             type = CardType.DEBIT,
-            currency = Currency.USD,
+            currency = "USD",
             expirationDate = LocalDate.of(2028, 12, 31),
         ),
         Card(
@@ -74,7 +74,7 @@ class TransferFormViewModelTest {
             number = CardNumber.fromFirst6Last4("654321", "7890"),
             bank = "Banco Popular",
             type = CardType.CREDIT,
-            currency = Currency.CUP,
+            currency = "CUP",
             expirationDate = LocalDate.of(2027, 6, 15),
         ),
     )
@@ -96,7 +96,7 @@ class TransferFormViewModelTest {
         ),
     )
 
-    private val defaultWallet = Wallet(currency = Currency.CUP)
+    private val defaultWallet = Wallet(currency = "CUP")
 
     // Pre-constructed TransferSourceItem fixtures matching the sample data.
     //

@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 import com.vida.domain.model.Wallet
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.wallet.DeleteWallet
 import com.vida.domain.usecase.wallet.GetWallet
 import com.vida.domain.usecase.wallet.GetWalletBalance
@@ -15,6 +16,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -49,6 +52,7 @@ class WalletViewModel @Inject constructor(
     private val updateWallet: UpdateWallet,
     private val getWallet: GetWallet,
     private val getWalletBalance: GetWalletBalance,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalletListUiState>(WalletListUiState.Loading)
@@ -61,6 +65,11 @@ class WalletViewModel @Inject constructor(
     private val _isSaving = MutableStateFlow(false)
     val isSaving: StateFlow<Boolean> = _isSaving.asStateFlow()
 
+    /** Reactive list of currency codes for the wallet edit dialog dropdown. */
+    val currencyCodes: StateFlow<List<String>> = listCurrencies()
+        .map { currencies -> currencies.map { it.code } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     init {
         loadWallets()
     }
@@ -68,22 +77,24 @@ class WalletViewModel @Inject constructor(
     // ── Public actions ───────────────────────────────────────────────────────
 
     /**
-     * Adds a new wallet with [name], [currency], and optional [balanceMinor].
+     * Adds a new wallet with [name], [currencyCode], and optional [balanceMinor].
      *
      * Creates a [Wallet] with id=0 (upsert generates the real id) and calls
      * [updateWallet]. On success the list is refetched and [WalletNavEvent.SaveSuccess]
      * is emitted.
      */
-    fun onAdd(name: String, currency: Currency, balanceMinor: Long = 0L) {
+    fun onAdd(name: String, currencyCode: String, balanceMinor: Long = 0L) {
         if (_isSaving.value) return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         if (trimmed.length > 100) return
 
+        val currency = Currency.fromCode(currencyCode)
+
         viewModelScope.launch {
             _isSaving.value = true
             try {
-                updateWallet(Wallet(id = 0L, name = trimmed, currency = currency,
+                updateWallet(Wallet(id = 0L, name = trimmed, currency = currencyCode,
                     balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency)))
                 loadWallets()
                 _navEvents.send(WalletNavEvent.SaveSuccess)
@@ -102,16 +113,18 @@ class WalletViewModel @Inject constructor(
     }
 
     /**
-     * Updates an existing wallet identified by [id] with new [name], [currency],
+     * Updates an existing wallet identified by [id] with new [name], [currencyCode],
      * and optional [balanceMinor].
      *
      * On success the list is refetched and [WalletNavEvent.SaveSuccess] is emitted.
      */
-    fun onEdit(id: Long, name: String, currency: Currency, balanceMinor: Long = 0L) {
+    fun onEdit(id: Long, name: String, currencyCode: String, balanceMinor: Long = 0L) {
         if (_isSaving.value) return
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         if (trimmed.length > 100) return
+
+        val currency = Currency.fromCode(currencyCode)
 
         viewModelScope.launch {
             _isSaving.value = true
@@ -120,7 +133,7 @@ class WalletViewModel @Inject constructor(
                     _navEvents.send(WalletNavEvent.ShowToast("Billetera no encontrada"))
                     return@launch
                 }
-                updateWallet(existing.copy(name = trimmed, currency = currency,
+                updateWallet(existing.copy(name = trimmed, currency = currencyCode,
                     balance = Money(java.math.BigDecimal(balanceMinor).divide(java.math.BigDecimal(100), 2, java.math.RoundingMode.HALF_EVEN), currency)))
                 loadWallets()
                 _navEvents.send(WalletNavEvent.SaveSuccess)
@@ -244,10 +257,10 @@ class WalletViewModel @Inject constructor(
         return WalletDisplayItem(
             id = id,
             name = name,
-            currencyCode = currency.code,
-            balanceFormatted = "${currency.symbol} $formattedAmount",
+            currencyCode = this.currency,
+            balanceFormatted = formattedAmount,
             balance = balance,
-            currency = currency,
+            currency = this.currency,
         )
     }
 
@@ -258,10 +271,10 @@ class WalletViewModel @Inject constructor(
         return WalletDisplayItem(
             id = id,
             name = name,
-            currencyCode = currency.code,
-            balanceFormatted = "${currency.symbol} —",
+            currencyCode = this.currency,
+            balanceFormatted = "—",
             balance = balance,
-            currency = currency,
+            currency = this.currency,
         )
     }
 }

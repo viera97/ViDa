@@ -4,7 +4,6 @@ import app.cash.turbine.test
 import com.vida.data.db.dao.CurrencyRateDao
 import com.vida.data.db.entity.CurrencyRateEntity
 import com.vida.data.mapper.CurrencyRateMapper
-import com.vida.domain.model.Currency
 import com.vida.domain.model.CurrencyRate
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
@@ -36,8 +35,8 @@ class CurrencyRateRepositoryImplTest {
         repository.getAll().test {
             val rates = awaitItem()
             assertEquals(1, rates.size)
-            assertEquals(Currency.USD, rates[0].fromCurrency)
-            assertEquals(Currency.CUP, rates[0].toCurrency)
+            assertEquals("USD", rates[0].fromCurrency)
+            assertEquals("CUP", rates[0].toCurrency)
             cancelAndIgnoreRemainingEvents()
         }
     }
@@ -46,8 +45,8 @@ class CurrencyRateRepositoryImplTest {
     fun `getRate delegates to dao with currency codes and epoch millis`() = runTest {
         coEvery { dao.getRate(any(), any(), any()) } returns anEntity()
 
-        val rate = repository.getRate(Currency.USD, Currency.CUP, Instant.ofEpochMilli(1_000L))
-        assertEquals(Currency.USD, rate!!.fromCurrency)
+        val rate = repository.getRate("USD", "CUP", Instant.ofEpochMilli(1_000L))
+        assertEquals("USD", rate!!.fromCurrency)
         coVerify { dao.getRate("USD", "CUP", 1_000L) }
     }
 
@@ -55,14 +54,14 @@ class CurrencyRateRepositoryImplTest {
     fun `getRate returns null when dao returns null`() = runTest {
         coEvery { dao.getRate(any(), any(), any()) } returns null
 
-        assertNull(repository.getRate(Currency.USD, Currency.MLC, Instant.ofEpochMilli(500L)))
+        assertNull(repository.getRate("USD", "MLC", Instant.ofEpochMilli(500L)))
     }
 
     @Test
     fun `getRateHistory delegates to dao with currency codes`() = runTest {
         coEvery { dao.observeRateHistory(any(), any()) } returns flowOf(listOf(anEntity()))
 
-        repository.getRateHistory(Currency.USD, Currency.CUP).test {
+        repository.getRateHistory("USD", "CUP").test {
             val rates = awaitItem()
             assertEquals(1, rates.size)
             cancelAndIgnoreRemainingEvents()
@@ -89,16 +88,16 @@ class CurrencyRateRepositoryImplTest {
 
     private fun anEntity() = CurrencyRateEntity(
         id = 1L,
-        fromCurrency = Currency.USD,
-        toCurrency = Currency.CUP,
+        fromCurrency = "USD",
+        toCurrency = "CUP",
         rate = 24.5,
         effectiveDate = 1_000L,
     )
 
     private fun aRate() = CurrencyRate(
         id = 0L,
-        fromCurrency = Currency.USD,
-        toCurrency = Currency.CUP,
+        fromCurrency = "USD",
+        toCurrency = "CUP",
         rate = BigDecimal("24.50"),
         updatedAt = Instant.ofEpochMilli(1_000L),
         provider = "Manual",

@@ -48,14 +48,14 @@ class IncomeDaoTest {
      */
     private suspend fun seed() {
         database.walletDao().upsert(
-            WalletEntity(currency = Currency.CUP, name = "Efectivo"),
+            WalletEntity(currency = "CUP", name = "Efectivo"),
         )
         database.cardDao().upsert(
             CardEntity(
                 maskedNumber = "123456******7890",
                 bank = "POP",
                 type = CardType.DEBIT,
-                currency = Currency.USD,
+                currency = "USD",
                 note = null,
                 expirationDate = java.time.LocalDate.of(2028, 12, 31),
             ),

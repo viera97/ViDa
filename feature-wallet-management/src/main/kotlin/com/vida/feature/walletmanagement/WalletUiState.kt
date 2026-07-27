@@ -1,6 +1,5 @@
 package com.vida.feature.walletmanagement
 
-import com.vida.domain.model.Currency
 import com.vida.domain.model.Money
 
 /**
@@ -37,7 +36,7 @@ sealed interface WalletListUiState {
  * @property balanceFormatted Formatted balance (e.g. "$1,250.50").
  * @property balance Raw stored [Money] balance. Used by edit dialogs to
  *   pre-populate the input field without parsing the locale-aware formatted string.
- * @property currency Domain [Currency] enum for dialog pre-selection.
+ * @property currency Domain currency code string for dialog pre-selection.
  */
 data class WalletDisplayItem(
     val id: Long,
@@ -45,7 +44,7 @@ data class WalletDisplayItem(
     val currencyCode: String,
     val balanceFormatted: String,
     val balance: Money,
-    val currency: Currency,
+    val currency: String,
 )
 
 /**

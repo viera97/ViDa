@@ -25,10 +25,8 @@ class ConvertersTest {
     }
 
     @Test
-    fun `currency from unknown code throws`() {
-        assertThrows(IllegalArgumentException::class.java) {
-            converters.toCurrency("XYZ")
-        }
+    fun `currency from unknown code falls back to CUP`() {
+        assertEquals(Currency.CUP, converters.toCurrency("XYZ"))
     }
 
     // ── Instant ────────────────────────────────────────────────────────

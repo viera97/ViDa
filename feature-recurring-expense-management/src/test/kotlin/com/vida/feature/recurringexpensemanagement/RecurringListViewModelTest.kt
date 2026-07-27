@@ -9,6 +9,7 @@ import com.vida.domain.model.RecurringExpense
 import com.vida.domain.model.SourceType
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.expense.RecordExpense
 import com.vida.domain.usecase.recurring.AddRecurringExpense
 import com.vida.domain.usecase.recurring.DeleteRecurringExpense
@@ -17,7 +18,16 @@ import com.vida.domain.usecase.recurring.GetDueRecurringExpenses
 import com.vida.domain.usecase.recurring.GetRecurringExpense
 import com.vida.domain.usecase.recurring.ListRecurringExpenses
 import com.vida.domain.usecase.recurring.UpdateRecurringExpense
+import com.vida.domain.usecase.recurring.AddRecurringIncome
+import com.vida.domain.usecase.recurring.DeleteRecurringIncome
+import com.vida.domain.usecase.recurring.GenerateRecurringIncome
+import com.vida.domain.usecase.recurring.GetDueRecurringIncomes
+import com.vida.domain.usecase.recurring.GetRecurringIncome
+import com.vida.domain.usecase.recurring.ListRecurringIncomes
+import com.vida.domain.usecase.recurring.UpdateRecurringIncome
+import com.vida.domain.usecase.income.RecordIncome
 import com.vida.domain.usecase.stash.ListStashes
+import com.vida.domain.usecase.wallet.ListWallets
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -52,15 +62,25 @@ class RecurringListViewModelTest {
     private lateinit var generateRecurringExpense: GenerateRecurringExpense
     private lateinit var getDueRecurringExpenses: GetDueRecurringExpenses
     private lateinit var recordExpense: RecordExpense
+    private lateinit var listRecurringIncomes: ListRecurringIncomes
+    private lateinit var addRecurringIncome: AddRecurringIncome
+    private lateinit var updateRecurringIncome: UpdateRecurringIncome
+    private lateinit var deleteRecurringIncome: DeleteRecurringIncome
+    private lateinit var getRecurringIncome: GetRecurringIncome
+    private lateinit var getDueRecurringIncomes: GetDueRecurringIncomes
+    private lateinit var generateRecurringIncome: GenerateRecurringIncome
+    private lateinit var recordIncome: RecordIncome
     private lateinit var listCategories: ListCategories
     private lateinit var listCards: ListCards
     private lateinit var listStashes: ListStashes
+    private lateinit var listWallets: ListWallets
+    private lateinit var listCurrencies: ListCurrencies
 
     private val sampleTemplates = listOf(
         RecurringExpense(
             id = 1L,
             amount = Money(BigDecimal("500.00"), Currency.CUP),
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 10L,
             sourceType = SourceType.WALLET,
             sourceId = null,
@@ -72,7 +92,7 @@ class RecurringListViewModelTest {
         RecurringExpense(
             id = 2L,
             amount = Money(BigDecimal("50.00"), Currency.USD),
-            currency = Currency.USD,
+            currency = "USD",
             categoryId = 20L,
             sourceType = SourceType.CARD,
             sourceId = 5L,
@@ -84,7 +104,7 @@ class RecurringListViewModelTest {
         RecurringExpense(
             id = 3L,
             amount = Money(BigDecimal("10.00"), Currency.CUP),
-            currency = Currency.CUP,
+            currency = "CUP",
             categoryId = 30L,
             sourceType = SourceType.WALLET,
             sourceId = null,
@@ -96,7 +116,7 @@ class RecurringListViewModelTest {
         RecurringExpense(
             id = 4L,
             amount = Money(BigDecimal("200.00"), Currency.MLC),
-            currency = Currency.MLC,
+            currency = "MLC",
             categoryId = 40L,
             sourceType = SourceType.STASH,
             sourceId = 3L,
@@ -109,7 +129,7 @@ class RecurringListViewModelTest {
         RecurringExpense(
             id = 5L,
             amount = Money(BigDecimal("25.00"), Currency.USD),
-            currency = Currency.USD,
+            currency = "USD",
             categoryId = 20L,
             sourceType = SourceType.CARD,
             sourceId = 5L,
@@ -131,15 +151,28 @@ class RecurringListViewModelTest {
         generateRecurringExpense = mockk()
         getDueRecurringExpenses = mockk()
         recordExpense = mockk()
+        listRecurringIncomes = mockk()
+        addRecurringIncome = mockk()
+        updateRecurringIncome = mockk()
+        deleteRecurringIncome = mockk()
+        getRecurringIncome = mockk()
+        getDueRecurringIncomes = mockk()
+        generateRecurringIncome = mockk()
+        recordIncome = mockk()
         listCategories = mockk()
         listCards = mockk()
         listStashes = mockk()
+        listWallets = mockk()
+        listCurrencies = mockk()
 
         // Default: templates exist
         every { listRecurringExpenses() } returns flowOf(sampleTemplates)
         every { listCategories() } returns flowOf(emptyList())
         every { listCards() } returns flowOf(emptyList())
         every { listStashes() } returns flowOf(emptyList())
+        every { listWallets() } returns flowOf(emptyList())
+        every { listCurrencies() } returns flowOf(emptyList())
+        every { listRecurringIncomes() } returns flowOf(emptyList())
         coEvery { deleteRecurringExpense(any()) } returns Unit
         coEvery { getRecurringExpense(any()) } returns sampleTemplates[0]
         coEvery { updateRecurringExpense(any()) } returns 1L
@@ -159,10 +192,46 @@ class RecurringListViewModelTest {
         getDueRecurringExpenses = getDueRecurringExpenses,
         generateRecurringExpense = generateRecurringExpense,
         recordExpense = recordExpense,
+        listRecurringIncomes = listRecurringIncomes,
+        addRecurringIncome = addRecurringIncome,
+        updateRecurringIncome = updateRecurringIncome,
+        deleteRecurringIncome = deleteRecurringIncome,
+        getRecurringIncome = getRecurringIncome,
+        getDueRecurringIncomes = getDueRecurringIncomes,
+        generateRecurringIncome = generateRecurringIncome,
+        recordIncome = recordIncome,
         listCategories = listCategories,
         listCards = listCards,
         listStashes = listStashes,
+        listWallets = listWallets,
+        listCurrencies = listCurrencies,
     )
+
+    /** Builds a minimal [RecurringDisplayItem] from a sample template id, or a synthetic one for unknown ids. */
+    private fun displayItemFor(id: Long): RecurringDisplayItem {
+        val t = sampleTemplates.firstOrNull { it.id == id }
+        return RecurringDisplayItem(
+            id = id,
+            amountFormatted = t?.amount?.amount?.toPlainString() ?: "0.00",
+            currencyCode = t?.currency ?: "CUP",
+            categoryName = t?.categoryId?.toString() ?: "0",
+            frequencyLabel = when (t?.frequency) {
+                Frequency.DAILY -> "Diario"
+                Frequency.WEEKLY -> "Semanal"
+                Frequency.MONTHLY -> "Mensual"
+                Frequency.YEARLY -> "Anual"
+                null -> "Mensual"
+            },
+            sourceType = t?.sourceType ?: SourceType.WALLET,
+            sourceTypeIcon = "\uD83D\uDCB0",
+            nextDueFormatted = "01/01/2026",
+            description = t?.description ?: "test",
+            isActive = t?.isActive ?: true,
+            type = RecurringDisplayItem.ItemType.EXPENSE,
+            frequencyOrdinal = t?.frequency?.ordinal ?: 0,
+            startDateEpochDay = t?.startDate?.toEpochDay() ?: 0L,
+        )
+    }
 
     // ══════════════════════════════════════════════════════════════════════
     // R1 — UiState Lifecycle
@@ -336,7 +405,7 @@ class RecurringListViewModelTest {
             val ready = awaitItem() as RecurringListUiState.Ready
             assertEquals(5, ready.items.size)
 
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
 
             // Simulate Room reactive re-emission
             templatesFlow.value = remaining
@@ -354,7 +423,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Plantilla eliminada", event.message)
@@ -377,7 +446,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Network error", event.message)
@@ -394,7 +463,7 @@ class RecurringListViewModelTest {
             val ready = awaitItem() as RecurringListUiState.Ready
             assertEquals(5, ready.items.size)
 
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
 
             // State should NOT change — list preserved
             expectNoEvents()
@@ -409,7 +478,7 @@ class RecurringListViewModelTest {
             val vm = createVm()
 
             vm.navEvents.test {
-                vm.onDelete(1L)
+                vm.onDelete(displayItemFor(1L))
 
                 val event = awaitItem() as RecurringNavEvent.ShowToast
                 assertTrue(event.message.isNotBlank())
@@ -425,7 +494,7 @@ class RecurringListViewModelTest {
 
         vm.uiState.test {
             awaitItem() // Error state
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
             expectNoEvents()
             coVerify(inverse = true) { deleteRecurringExpense(any()) }
         }
@@ -438,7 +507,7 @@ class RecurringListViewModelTest {
 
         vm.uiState.test {
             awaitItem() // Ready
-            vm.onDelete(999L)
+            vm.onDelete(displayItemFor(999L))
             expectNoEvents()
             coVerify(inverse = true) { deleteRecurringExpense(any()) }
         }
@@ -452,8 +521,8 @@ class RecurringListViewModelTest {
         vm.uiState.test {
             awaitItem() // Ready
 
-            vm.onDelete(1L)
-            vm.onDelete(2L)
+            vm.onDelete(displayItemFor(1L))
+            vm.onDelete(displayItemFor(2L))
 
             // With UnconfinedTestDispatcher, first op completes synchronously
             coVerify(exactly = 1) { deleteRecurringExpense(1L) }
@@ -528,7 +597,7 @@ class RecurringListViewModelTest {
             val item = ready.items.first { it.id == 1L }
             assertTrue(item.isActive)
 
-            vm.onToggleActive(1L)
+            vm.onToggleActive(displayItemFor(1L))
 
             templatesFlow.value = toggled
 
@@ -554,7 +623,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onToggleActive(4L)
+            vm.onToggleActive(displayItemFor(4L))
 
             templatesFlow.value = toggled
 
@@ -571,7 +640,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onToggleActive(1L)
+            vm.onToggleActive(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Update failed", event.message)
@@ -585,7 +654,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onToggleActive(999L)
+            vm.onToggleActive(displayItemFor(999L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Plantilla no encontrada", event.message)
@@ -605,7 +674,7 @@ class RecurringListViewModelTest {
         coEvery { getRecurringExpense(1L) } returns sampleTemplates[0]
         coEvery { updateRecurringExpense(any()) } returns 1L
 
-        vm.onToggleActive(1L)
+        vm.onToggleActive(displayItemFor(1L))
 
         coVerify(exactly = 1) { getRecurringExpense(1L) }
         coVerify(exactly = 1) { updateRecurringExpense(any()) }
@@ -628,7 +697,7 @@ class RecurringListViewModelTest {
             assertEquals(5, ready.items.size)
             assertTrue(ready.items.any { it.id == 1L })
 
-            vm.onDelete(1L)
+            vm.onDelete(displayItemFor(1L))
 
             templatesFlow.value = afterDelete
 
@@ -668,7 +737,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             val toast = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Gasto generado", toast.message)
@@ -696,7 +765,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             val toast = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Gasto generado", toast.message)
@@ -715,7 +784,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("DB locked", event.message)
@@ -731,7 +800,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertTrue(event.message.isNotBlank())
@@ -747,7 +816,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(999L)
+            vm.onGenerate(displayItemFor(999L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Recurring expense 999 not found", event.message)
@@ -764,13 +833,13 @@ class RecurringListViewModelTest {
         val vm = createVm()
         assertEquals(false, vm.isGenerating.value)
 
-        vm.onGenerate(1L)
+        vm.onGenerate(displayItemFor(1L))
 
         // With UnconfinedTestDispatcher, operation completes synchronously
         coVerify(exactly = 1) { generateRecurringExpense(1L) }
 
         // Second call immediately after — should not re-enter because first completed
-        vm.onGenerate(1L)
+        vm.onGenerate(displayItemFor(1L))
         coVerify(exactly = 2) { generateRecurringExpense(1L) }
     }
 
@@ -787,7 +856,7 @@ class RecurringListViewModelTest {
             val ready = awaitItem() as RecurringListUiState.Ready
             assertEquals(5, ready.items.size)
 
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             // generateRecurringExpense updates lastGeneratedDate internally;
             // Room would re-emit. Simulate it.
@@ -809,7 +878,7 @@ class RecurringListViewModelTest {
         val vm = createVm()
 
         vm.navEvents.test {
-            vm.onGenerate(1L)
+            vm.onGenerate(displayItemFor(1L))
 
             val event = awaitItem() as RecurringNavEvent.ShowToast
             assertEquals("Gasto generado", event.message)
