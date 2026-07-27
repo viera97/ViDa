@@ -37,6 +37,7 @@ import com.vida.domain.model.Currency
 import com.vida.domain.model.ExpenseFilter
 import com.vida.domain.model.SourceType
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -244,7 +245,12 @@ fun ExpenseFilterSheet(
                 TextButton(
                     onClick = {
                         val millis = datePickerState.selectedDateMillis
-                        val instant = millis?.let { Instant.ofEpochMilli(it) }
+                        val instant = millis?.let {
+                            val localDate = Instant.ofEpochMilli(it)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            localDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
+                        }
                         when (editing) {
                             EditingDateField.FROM -> dateFrom = instant
                             EditingDateField.TO -> dateTo = instant

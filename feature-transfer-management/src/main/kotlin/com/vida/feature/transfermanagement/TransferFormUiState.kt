@@ -1,6 +1,5 @@
 package com.vida.feature.transfermanagement
 
-import com.vida.domain.model.Currency
 import com.vida.domain.model.SourceType
 import java.time.Instant
 
@@ -58,7 +57,7 @@ data class TransferSourceItem(
     val id: Long,
     val type: SourceType,
     val name: String,
-    val currency: Currency,
+    val currency: String,
     val icon: String,
     val subtitle: String? = null,
 )

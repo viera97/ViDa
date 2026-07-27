@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import java.math.BigDecimal
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 /**
  * Form dialog for creating or editing a currency rate.
@@ -243,7 +244,10 @@ fun RateFormDialog(
                 TextButton(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
-                            selectedDate = Instant.ofEpochMilli(millis)
+                            val localDate = Instant.ofEpochMilli(millis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            selectedDate = localDate.atStartOfDay(ZoneId.systemDefault()).toInstant()
                         }
                         showDatePicker = false
                     },

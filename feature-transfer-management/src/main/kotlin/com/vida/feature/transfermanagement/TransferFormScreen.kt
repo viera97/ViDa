@@ -4,6 +4,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,7 +13,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -20,6 +24,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccountBalanceWallet
@@ -46,6 +52,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -434,7 +443,7 @@ private fun SourceCard(
                     )
                 }
                 Text(
-                    text = source.currency.code,
+                    text = source.currency,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -449,15 +458,21 @@ private fun SourceCard(
     }
 }
 
-// ── Source selection dialog ──────────────────────────────────────────────────
+// ── Source selection bottom sheet ────────────────────────────────────────────
+
+private val transferWalletColor = Color(0xFF1565C0)
+private val transferCardColor = Color(0xFF2E7D32)
+private val transferStashColor = Color(0xFFE65100)
 
 /**
- * [AlertDialog] listing all available transfer sources.
+ * [ModalBottomSheet] displaying transfer sources in a grid layout grouped by type.
  *
+ * Matches the [com.vida.feature.expense.form.SourceSheet] grid+chip pattern.
  * The currently selected source is highlighted. The [excludedSource]
  * (the counterpart in the De/A pair) is visually dimmed and non-clickable
  * to enforce mutual exclusion at the UI level.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SourceSelectionDialog(
     title: String,
@@ -467,86 +482,167 @@ private fun SourceSelectionDialog(
     onDismiss: () -> Unit,
     onSourceSelected: (TransferSourceItem) -> Unit,
 ) {
-    AlertDialog(
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    ModalBottomSheet(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = {
-            Column {
-                sources.forEachIndexed { index, source ->
-                    val isExcluded = source == excludedSource
-                    val isSelected = source == selectedSource
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(enabled = !isExcluded) {
-                                onSourceSelected(source)
-                            },
-                        color = if (isSelected)
-                            MaterialTheme.colorScheme.primaryContainer
-                        else
-                            MaterialTheme.colorScheme.surface,
-                        tonalElevation = if (isSelected) 2.dp else 0.dp,
-                        shape = MaterialTheme.shapes.small,
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Icon(
-                                imageVector = when (source.type) {
-                                    SourceType.WALLET -> Icons.Default.AccountBalanceWallet
-                                    SourceType.CARD -> Icons.Default.CreditCard
-                                    SourceType.STASH -> Icons.Default.Savings
-                                },
-                                contentDescription = source.name,
-                                modifier = Modifier.size(28.dp),
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = source.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (isExcluded)
-                                        MaterialTheme.colorScheme.onSurface
-                                            .copy(alpha = 0.38f)
-                                    else
-                                        MaterialTheme.colorScheme.onSurface,
-                                )
-                                if (source.subtitle != null) {
-                                    Text(
-                                        text = source.subtitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                }
-                            }
-                            Text(
-                                text = source.currency.code,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            if (isSelected) {
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = "Seleccionado",
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        }
-                    }
-                    if (index < sources.lastIndex) {
-                        HorizontalDivider()
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        },
+        sheetState = sheetState,
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+
+        // --- Wallet section ---
+        val wallets = sources.filter { it.type == SourceType.WALLET }
+        if (wallets.isNotEmpty()) {
+            TransferSectionHeader("Billeteras")
+            TransferSourceGrid(
+                sources = wallets,
+                selectedSource = selectedSource,
+                excludedSource = excludedSource,
+                color = transferWalletColor,
+                icon = Icons.Default.AccountBalanceWallet,
+                onSourceSelected = onSourceSelected,
+            )
+        }
+
+        // --- Cards section ---
+        val cards = sources.filter { it.type == SourceType.CARD }
+        if (cards.isNotEmpty()) {
+            TransferSectionHeader("Tarjetas")
+            TransferSourceGrid(
+                sources = cards,
+                selectedSource = selectedSource,
+                excludedSource = excludedSource,
+                color = transferCardColor,
+                icon = Icons.Default.CreditCard,
+                onSourceSelected = onSourceSelected,
+            )
+        }
+
+        // --- Stashes section ---
+        val stashes = sources.filter { it.type == SourceType.STASH }
+        if (stashes.isNotEmpty()) {
+            TransferSectionHeader("Ahorros")
+            TransferSourceGrid(
+                sources = stashes,
+                selectedSource = selectedSource,
+                excludedSource = excludedSource,
+                color = transferStashColor,
+                icon = Icons.Default.Savings,
+                onSourceSelected = onSourceSelected,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransferSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = modifier.padding(horizontal = 16.dp, vertical = 8.dp),
     )
+}
+
+@Composable
+private fun TransferSourceGrid(
+    sources: List<TransferSourceItem>,
+    selectedSource: TransferSourceItem?,
+    excludedSource: TransferSourceItem?,
+    color: Color,
+    icon: ImageVector,
+    onSourceSelected: (TransferSourceItem) -> Unit,
+) {
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 120.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        items(
+            count = sources.size,
+            key = { "transfer-source-${sources[it].type}-${sources[it].id}" },
+        ) { index ->
+            val source = sources[index]
+            val isExcluded = source == excludedSource
+            TransferSourceChip(
+                name = source.name,
+                currencyCode = source.currency,
+                color = color,
+                icon = icon,
+                selected = source == selectedSource,
+                excluded = isExcluded,
+                onClick = {
+                    if (!isExcluded) onSourceSelected(source)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TransferSourceChip(
+    name: String,
+    currencyCode: String,
+    color: Color,
+    icon: ImageVector,
+    selected: Boolean,
+    excluded: Boolean,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(12.dp)
+    Surface(
+        onClick = onClick,
+        enabled = !excluded,
+        shape = shape,
+        color = if (selected && !excluded) color else color.copy(alpha = 0.15f),
+        tonalElevation = if (selected) 4.dp else 0.dp,
+        modifier = Modifier
+            .padding(4.dp)
+            .alpha(if (excluded) 0.38f else 1f),
+    ) {
+        Box(
+            modifier = Modifier.size(width = 120.dp, height = 72.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = name,
+                    tint = if (selected && !excluded) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    modifier = Modifier.size(20.dp),
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = name,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected && !excluded)
+                        MaterialTheme.colorScheme.onPrimary
+                    else
+                        MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                )
+                Text(
+                    text = currencyCode,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected && !excluded)
+                        MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
+                    else
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                )
+            }
+        }
+    }
 }
 
 // ── Dialog variant ───────────────────────────────────────────────────────────

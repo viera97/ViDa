@@ -52,6 +52,7 @@ import com.vida.feature.reports.model.ReportsUiState
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 
 /**
  * Root composable for the Reports screen.
@@ -236,9 +237,9 @@ private fun CustomDateRangeDialog(
     val zoneId = ZoneId.systemDefault()
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = if (step == 0) {
-            LocalDate.now().minusMonths(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+            LocalDate.now().minusMonths(1).atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         } else {
-            LocalDate.now().atStartOfDay(zoneId).toInstant().toEpochMilli()
+            LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
         },
     )
 
@@ -250,7 +251,7 @@ private fun CustomDateRangeDialog(
                     val millis = datePickerState.selectedDateMillis
                     if (millis != null) {
                         val date = Instant.ofEpochMilli(millis)
-                            .atZone(zoneId)
+                            .atZone(ZoneOffset.UTC)
                             .toLocalDate()
                         if (step == 0) {
                             startDate = date

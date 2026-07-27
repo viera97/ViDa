@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 /**
@@ -82,7 +83,7 @@ fun DateSelector(
                     onClick = {
                         datePickerState.selectedDateMillis?.let { millis ->
                             val newDate = Instant.ofEpochMilli(millis)
-                                .atZone(zone)
+                                .atZone(ZoneOffset.UTC)
                                 .toLocalDate()
                             onChanged(newDate)
                         }

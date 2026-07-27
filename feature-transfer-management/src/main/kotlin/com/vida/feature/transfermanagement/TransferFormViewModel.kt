@@ -188,7 +188,7 @@ class TransferFormViewModel @Inject constructor(
                     fromId = de.id,
                     toType = a.type,
                     toId = a.id,
-                    amount = Money(BigDecimal(ready.amount), de.currency),
+                    amount = Money(BigDecimal(ready.amount), Currency.fromCode(de.currency)),
                     dateTime = ready.dateTime,
                     note = ready.note.ifBlank { null },
                 )
@@ -367,7 +367,7 @@ class TransferFormViewModel @Inject constructor(
                     id = wallet.id,
                     type = SourceType.WALLET,
                     name = wallet.name,
-                    currency = Currency.fromCode(wallet.currency),
+                    currency = wallet.currency,
                     icon = "\uD83D\uDCB0",
                 ),
             )
@@ -381,7 +381,7 @@ class TransferFormViewModel @Inject constructor(
                     // primary identifier (matches wallet behavior); fall
                     // back to the bank name when no custom name was set.
                     name = card.note ?: card.bank,
-                    currency = Currency.values().firstOrNull { it.code.equals(card.currency, ignoreCase = true) } ?: Currency.CUP,
+                    currency = card.currency,
                     icon = "\u2660\uFE0F",
                     subtitle = "···${card.number.masked.substring(12, 16)}",
                 ),
@@ -393,7 +393,7 @@ class TransferFormViewModel @Inject constructor(
                     id = stash.id,
                     type = SourceType.STASH,
                     name = stash.name,
-                    currency = stash.currency,
+                    currency = stash.currency.code,
                     icon = "\uD83D\uDC8E",
                 ),
             )
