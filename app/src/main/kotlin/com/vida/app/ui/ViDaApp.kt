@@ -261,8 +261,10 @@ fun ViDaApp() {
                 ) {
                     composable(
                         "home",
-                        enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
-                        exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
+                        // Home is the leftmost tab — always slides in from the left
+                        // and exits to the left when replaced by a rightward tab.
+                        enterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        exitTransition = { slideOutHorizontally(targetOffsetX = { -it }) + fadeOut(tween(300)) },
                         popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
                         popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
