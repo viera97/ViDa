@@ -144,6 +144,7 @@ fun ViDaApp() {
                         },
                         selected = currentRoute == "home",
                         onClick = {
+                            if (currentRoute == "home") return@NavigationBarItem
                             val targetIdx = tabOrder.indexOf("home")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
                                 .let { if (it < 0) 0 else it }
@@ -163,6 +164,7 @@ fun ViDaApp() {
                         },
                         selected = currentRoute == "fuentes",
                         onClick = {
+                            if (currentRoute == "fuentes") return@NavigationBarItem
                             val targetIdx = tabOrder.indexOf("fuentes")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
                                 .let { if (it < 0) 0 else it }
@@ -182,6 +184,7 @@ fun ViDaApp() {
                         },
                         selected = currentRoute == "rates",
                         onClick = {
+                            if (currentRoute == "rates") return@NavigationBarItem
                             val targetIdx = tabOrder.indexOf("rates")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
                                 .let { if (it < 0) 0 else it }
@@ -201,6 +204,7 @@ fun ViDaApp() {
                         },
                         selected = currentRoute == "recurring",
                         onClick = {
+                            if (currentRoute == "recurring") return@NavigationBarItem
                             val targetIdx = tabOrder.indexOf("recurring")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
                                 .let { if (it < 0) 0 else it }
@@ -220,6 +224,7 @@ fun ViDaApp() {
                         },
                         selected = currentRoute == "settings",
                         onClick = {
+                            if (currentRoute == "settings") return@NavigationBarItem
                             val targetIdx = tabOrder.indexOf("settings")
                             val currentIdx = tabOrder.indexOf(currentRoute ?: "home")
                                 .let { if (it < 0) 0 else it }
