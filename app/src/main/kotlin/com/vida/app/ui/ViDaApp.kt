@@ -263,8 +263,8 @@ fun ViDaApp() {
                         "home",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         HomeScreen(
                             onNavigateToExpenseList = { navController.navigate("expenses") },
@@ -277,8 +277,8 @@ fun ViDaApp() {
                         "recurring",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         RecurringListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -288,8 +288,8 @@ fun ViDaApp() {
                         "expense/new",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         ExpenseFormScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -299,8 +299,8 @@ fun ViDaApp() {
                         "transfer/new",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         TransferFormScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -310,8 +310,8 @@ fun ViDaApp() {
                         "expenses",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         ExpenseListScreen(
                             onNavigateToDetail = { id -> navController.navigate("expense/$id") },
@@ -322,8 +322,8 @@ fun ViDaApp() {
                         "expense/{id}",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         ExpenseDetailScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -333,8 +333,8 @@ fun ViDaApp() {
                         "incomes",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         IncomeListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -345,8 +345,8 @@ fun ViDaApp() {
                         "income/{id}",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         IncomeDetailScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -356,8 +356,8 @@ fun ViDaApp() {
                         "settings",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         SettingsScreen(
                             themeMode = themeMode,
@@ -375,8 +375,8 @@ fun ViDaApp() {
                         "categories",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         CategoryListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -388,8 +388,8 @@ fun ViDaApp() {
                         "currencies",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         CurrencyListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -399,8 +399,8 @@ fun ViDaApp() {
                         "banks",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         BankListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -410,8 +410,8 @@ fun ViDaApp() {
                         "cards",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         CardListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -421,8 +421,8 @@ fun ViDaApp() {
                         "stashes",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         StashListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -432,8 +432,8 @@ fun ViDaApp() {
                         "rates",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         RateListScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -443,8 +443,8 @@ fun ViDaApp() {
                         "wallet",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         WalletScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -454,8 +454,8 @@ fun ViDaApp() {
                         "fuentes",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         FuentesScreen(
                             onNavigateToTransfer = { navController.navigate("transfer/new") },
@@ -467,8 +467,8 @@ fun ViDaApp() {
                         "stats",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         StatisticsScreen(
                             onNavigateBack = { navController.popBackStack() },
@@ -479,8 +479,8 @@ fun ViDaApp() {
                         "reports",
                         enterTransition = { slideInHorizontally(initialOffsetX = enterX) + fadeIn(tween(300)) },
                         exitTransition = { slideOutHorizontally(targetOffsetX = exitX) + fadeOut(tween(300)) },
-                        popEnterTransition = { slideInHorizontally(initialOffsetX = exitX) + fadeIn(tween(300)) },
-                        popExitTransition = { slideOutHorizontally(targetOffsetX = enterX) + fadeOut(tween(300)) },
+                        popEnterTransition = { slideInHorizontally(initialOffsetX = { -it }) + fadeIn(tween(300)) },
+                        popExitTransition = { slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(300)) },
                     ) {
                         ReportsScreen(
                             onNavigateBack = { navController.popBackStack() },
