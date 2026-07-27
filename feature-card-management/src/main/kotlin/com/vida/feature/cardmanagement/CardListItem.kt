@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,7 +13,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
@@ -66,15 +66,17 @@ private val CardType.badgeColor: Color
 /**
  * A single card row rendered as a Material3 [Card].
  *
- * Displays the bank name as a headline, the masked number as a subtitle,
- * a colored type badge, the currency code, and the expiry date.
+ * Layout mirrors [com.vida.app.ui.FuentesScreen.FullCardItem] so that
+ * the card list view ("Todas las tarjetas") looks identical to the
+ * preview shown on the Fuentes tab. The only difference is the top-right
+ * icon: here it is a delete [IconButton] instead of a [CreditCard] icon.
  *
  * Long-press opens a [DropdownMenu] with "Editar" / "Eliminar".
  *
  * @param card Pre-formatted display item.
  * @param onClick Invoked on tap (opens edit dialog).
- * @param onEdit Invoked from context menu "Editar". Opens edit dialog with this card.
- * @param onDelete Invoked from context menu "Eliminar". Opens delete confirmation.
+ * @param onEdit Invoked from context menu "Editar".
+ * @param onDelete Invoked from delete button or context menu "Eliminar".
  * @param modifier Optional [Modifier].
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -94,135 +96,130 @@ fun CardListItem(
     val cardModifier = if (gradientBrush != null) {
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
             .background(brush = gradientBrush, shape = cardShape)
     } else {
-        modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+        modifier.fillMaxWidth()
     }
     val cardColors = if (brand.gradient != null) {
         CardDefaults.cardColors(containerColor = Color.Transparent)
     } else {
         CardDefaults.cardColors()
     }
+
     Card(
         modifier = cardModifier,
         shape = cardShape,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         colors = cardColors,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .combinedClickable(
-                    onClick = onClick,
-                    onLongClick = { showContextMenu = true },
-                )
-                .padding(16.dp),
-        ) {
-            // Top row: bank name on the left, delete affordance on the right.
-            // Using SpaceBetween inside the same Column's combinedClickable so
-            // the long-press context menu still works and tapping the icon
-            // dispatches onDelete without competing pointer routing.
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = card.bank,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Eliminar",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .combinedClickable(
+                        onClick = onClick,
+                        onLongClick = { showContextMenu = true },
                     )
-                }
-            }
-
-            Spacer(modifier = Modifier.padding(top = 4.dp))
-
-            // Subtitle: masked number
-            Text(
-                text = card.formattedNumber,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            Spacer(modifier = Modifier.padding(top = 8.dp))
-
-            // Badges row: type, currency, expiry
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(16.dp),
             ) {
-                // Type badge
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = card.type.badgeColor,
-                ) {
-                    Text(
-                        text = card.type.label,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color.White,
-                    )
-                }
-
-                // Currency code
-                Text(
-                    text = card.currency,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-
-                // Expiry
-                Text(
-                    text = card.expiryFormatted,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-
-            // Note indicator
-            if (card.note != null) {
-                Spacer(modifier = Modifier.padding(top = 4.dp))
-                Text(
-                    text = card.note,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-
-            // Brand logo: rendered inline at the bottom-right of the Column
-            // (no Box overlay) so the long-press combinedClickable on the
-            // Column keeps full hit-test coverage.
-            brand.logoDrawable?.let { drawable ->
-                val tint = brand.logoTint
-                Spacer(modifier = Modifier.height(8.dp))
+                // ── Top row: name on the left, delete button on the right ──
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Image(
-                        painter = painterResource(drawable),
-                        contentDescription = brand.logoContentDescription,
-                        modifier = Modifier
-                            .size(36.dp),
-                        colorFilter = tint?.let { ColorFilter.tint(it) },
+                    Text(
+                        text = card.note ?: card.bank,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Eliminar",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                // ── Second row: bank name on the left, masked number on the right ──
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = card.bank,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = card.formattedNumber,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ── Balance (prominent) ──
+                Text(
+                    text = card.balanceFormatted,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // ── Badges row: type, currency, expiry ──
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = card.type.badgeColor,
+                    ) {
+                        Text(
+                            text = card.type.label,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                        )
+                    }
+                    Text(
+                        text = card.currency,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = card.expiryFormatted,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // ── Brand logo at bottom-right (Box overlay, same as FullCardItem) ──
+            brand.logoDrawable?.let { drawable ->
+                val tint = brand.logoTint
+                Image(
+                    painter = painterResource(drawable),
+                    contentDescription = brand.logoContentDescription,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 12.dp, bottom = 12.dp)
+                        .size(36.dp),
+                    colorFilter = tint?.let { ColorFilter.tint(it) },
+                )
             }
         }
     }
 
-    // ── Context menu ─────────────────────────────────────────────────
+    // ── Context menu (long-press) ──────────────────────────────────────
     DropdownMenu(
         expanded = showContextMenu,
         onDismissRequest = { showContextMenu = false },
