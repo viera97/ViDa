@@ -31,8 +31,8 @@ import java.math.RoundingMode
  * existing exchange rate.
  *
  * Fields:
- * - From currency ([ExposedDropdownMenuBox], defaults to "USD")
- * - To currency ([ExposedDropdownMenuBox], defaults to "CUP")
+ * - From currency (selector, defaults to "USD" when available)
+ * - To currency (selector, defaults to "CUP" when available)
  * - Amount ([OutlinedTextField] with decimal keyboard)
  * - Result text — recomputed live as inputs change
  *
@@ -63,8 +63,12 @@ fun ConverterDialog(
     availableProviders: List<String>,
     availableCurrencies: List<String> = emptyList(),
 ) {
-    val defaultFrom = availableCurrencies.firstOrNull() ?: "USD"
-    val defaultTo = availableCurrencies.firstOrNull { it != defaultFrom } ?: "CUP"
+    val defaultFrom = availableCurrencies.firstOrNull { it == "USD" }
+        ?: availableCurrencies.firstOrNull()
+        ?: "USD"
+    val defaultTo = availableCurrencies.firstOrNull { it == "CUP" && it != defaultFrom }
+        ?: availableCurrencies.firstOrNull { it != defaultFrom }
+        ?: "CUP"
 
     var fromCurrency by remember { mutableStateOf(defaultFrom) }
     var toCurrency by remember { mutableStateOf(defaultTo) }

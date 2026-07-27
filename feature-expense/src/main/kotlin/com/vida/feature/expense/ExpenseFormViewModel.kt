@@ -2,6 +2,7 @@ package com.vida.feature.expense
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vida.core.ui.SourceItem
 import com.vida.domain.model.Currency
 import com.vida.domain.model.Expense
 import com.vida.domain.model.Money

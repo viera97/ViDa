@@ -7,6 +7,7 @@ import com.vida.core.format.toRelativeDateString
 import com.vida.domain.model.IncomeFilter
 import com.vida.domain.model.Income
 import com.vida.domain.usecase.card.ListCards
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.income.SearchIncomes
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.wallet.ListWallets
@@ -39,6 +40,7 @@ class IncomeListViewModel @Inject constructor(
     private val listCards: ListCards,
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     companion object {
@@ -59,6 +61,10 @@ class IncomeListViewModel @Inject constructor(
     /** Source label cache: "WALLET:1" → "Efectivo", "CARD:2" → "Mi BPA", etc. */
     private var sourceLabels: Map<String, String> = emptyMap()
 
+    /** Available currency codes loaded from the database for the filter sheet. */
+    private var availableCurrencyCodes: List<String> = emptyList()
+    val currencyCodes: List<String> get() = availableCurrencyCodes
+
     private val _searchQuery = MutableStateFlow("")
 
     init {
@@ -68,6 +74,9 @@ class IncomeListViewModel @Inject constructor(
                 val wallets = listWallets().first()
                 val cards = listCards().first()
                 val stashes = listStashes().first()
+                val currencies = listCurrencies().first()
+
+                availableCurrencyCodes = currencies.map { it.code }
 
                 sourceLabels = buildMap {
                     for (wallet in wallets) put("WALLET:${wallet.id}", wallet.name)

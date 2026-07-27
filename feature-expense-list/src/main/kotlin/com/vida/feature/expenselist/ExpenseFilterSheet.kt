@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -17,6 +18,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -33,9 +35,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.Category
-import com.vida.domain.model.Currency
 import com.vida.domain.model.ExpenseFilter
 import com.vida.domain.model.SourceType
+import com.vida.core.icon.iconNameToImageVector
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -43,13 +45,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es", "ES"))
-
-private val Currency.displayLabel: String get() = when (this) {
-    Currency.CUP -> "CUP"
-    Currency.USD -> "USD"
-    Currency.MLC -> "MLC"
-    Currency.EUR -> "EUR"
-}
 
 private val SourceType.displayLabel: String get() = when (this) {
     SourceType.WALLET -> "Billetera"
@@ -63,11 +58,12 @@ private val SourceType.displayLabel: String get() = when (this) {
  * Sections:
  * - Date range: "Desde" / "Hasta" → [DatePickerDialog]
  * - Categories: multi-select [FilterChip] flow row
- * - Currency: single-select row (CUP / USD / MLC + Todas)
+ * - Currency: single-select flow row with dynamic currencies from the database
  * - Source type: single-select row (Billetera / Tarjeta / Reserva + Todas)
  *
  * @param currentFilter Pre-populates the editing buffer.
  * @param categories All available categories to render as multi-select chips.
+ * @param availableCurrencies Currency code strings loaded from the database.
  * @param onApply Called with the edited filter on "Aplicar filtros".
  * @param onClear Called on "Limpiar filtros" (clears everything).
  * @param onDismiss Called on back gesture / scrim tap.
@@ -78,6 +74,7 @@ private val SourceType.displayLabel: String get() = when (this) {
 fun ExpenseFilterSheet(
     currentFilter: ExpenseFilter,
     categories: List<Category>,
+    availableCurrencies: List<String> = emptyList(),
     onApply: (ExpenseFilter) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
@@ -89,7 +86,7 @@ fun ExpenseFilterSheet(
     var selectedCategoryIds: Set<Long> by remember(currentFilter) {
         mutableStateOf(currentFilter.categoryIds ?: emptySet())
     }
-    var selectedCurrency: Currency? by remember(currentFilter) {
+    var selectedCurrency: String? by remember(currentFilter) {
         mutableStateOf(currentFilter.currency)
     }
     var selectedSourceType: SourceType? by remember(currentFilter) {
@@ -147,6 +144,7 @@ fun ExpenseFilterSheet(
             ) {
                 categories.forEach { cat ->
                     val selected = cat.id in selectedCategoryIds
+                    val catIcon = cat.icon?.let { iconNameToImageVector(it) }
                     FilterChip(
                         selected = selected,
                         onClick = {
@@ -157,6 +155,9 @@ fun ExpenseFilterSheet(
                             }
                         },
                         label = { Text(cat.name) },
+                        leadingIcon = if (catIcon != null) {
+                            { Icon(catIcon, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                        } else null,
                     )
                 }
             }
@@ -165,17 +166,20 @@ fun ExpenseFilterSheet(
             Spacer(modifier = Modifier.height(20.dp))
             SectionHeader("Moneda")
             Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 FilterChip(
                     selected = selectedCurrency == null,
                     onClick = { selectedCurrency = null },
                     label = { Text("Todas") },
                 )
-                Currency.values().forEach { cur ->
+                availableCurrencies.forEach { code ->
                     FilterChip(
-                        selected = selectedCurrency == cur,
-                        onClick = { selectedCurrency = cur },
-                        label = { Text(cur.displayLabel) },
+                        selected = selectedCurrency == code,
+                        onClick = { selectedCurrency = code },
+                        label = { Text(code) },
                     )
                 }
             }

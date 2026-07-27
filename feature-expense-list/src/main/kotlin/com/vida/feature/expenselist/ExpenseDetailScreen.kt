@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vida.feature.expense.ExpenseFormDialog
+import com.vida.core.icon.iconNameToImageVector
 import java.math.BigDecimal
 
 /**
@@ -162,7 +163,7 @@ fun ExpenseDetailScreen(
                                 DetailRow("Fecha", detail.formattedDate)
                                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-                                // Category with color dot
+                                // Category with color dot and icon
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Text(
                                         text = "Categoría",
@@ -176,6 +177,16 @@ fun ExpenseDetailScreen(
                                             .clip(CircleShape)
                                             .background(Color(detail.categoryColor)),
                                     )
+                                    val catIcon = detail.categoryIcon?.let { iconNameToImageVector(it) }
+                                    if (catIcon != null) {
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Icon(
+                                            imageVector = catIcon,
+                                            contentDescription = detail.categoryName,
+                                            tint = Color(detail.categoryColor),
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
                                         text = detail.categoryName,

@@ -175,9 +175,9 @@ class ExpenseRepositoryImpl @Inject constructor(
             args.addAll(categoryIds)
         }
         val currency = filter.currency
-        if (currency != null) {
+        if (!currency.isNullOrBlank()) {
             clauses.add("amount_currency = ?")
-            args.add(currency.code)
+            args.add(currency)
         }
         val sourceType = filter.sourceType
         if (sourceType != null) {

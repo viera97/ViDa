@@ -35,7 +35,7 @@ class SearchExpensesTest {
     fun `delegates to repository with filter limit and offset`() = runTest {
         val filter = ExpenseFilter(
             dateFrom = Instant.parse("2026-06-01T00:00:00Z"),
-            currency = Currency.CUP,
+            currency = "CUP",
             searchQuery = "café",
         )
         val limit = 20
@@ -69,7 +69,7 @@ class SearchExpensesTest {
             dateFrom = Instant.parse("2026-01-01T00:00:00Z"),
             dateTo = Instant.parse("2026-01-31T23:59:59Z"),
             categoryIds = setOf(1L, 2L),
-            currency = Currency.USD,
+            currency = "USD",
             sourceType = SourceType.CARD,
             searchQuery = "supermercado",
         )

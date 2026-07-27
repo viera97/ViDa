@@ -32,7 +32,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.vida.domain.model.Currency
 import com.vida.domain.model.IncomeFilter
 import com.vida.domain.model.SourceType
 import java.time.Instant
@@ -42,13 +41,6 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy", Locale("es", "ES"))
-
-private val Currency.displayLabel: String get() = when (this) {
-    Currency.CUP -> "CUP"
-    Currency.USD -> "USD"
-    Currency.MLC -> "MLC"
-    Currency.EUR -> "EUR"
-}
 
 private val SourceType.displayLabel: String get() = when (this) {
     SourceType.WALLET -> "Billetera"
@@ -60,6 +52,7 @@ private val SourceType.displayLabel: String get() = when (this) {
 @Composable
 fun IncomeFilterSheet(
     currentFilter: IncomeFilter,
+    availableCurrencies: List<String> = emptyList(),
     onApply: (IncomeFilter) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit,
@@ -67,7 +60,7 @@ fun IncomeFilterSheet(
 ) {
     var dateFrom: Instant? by remember(currentFilter) { mutableStateOf(currentFilter.dateFrom) }
     var dateTo: Instant? by remember(currentFilter) { mutableStateOf(currentFilter.dateTo) }
-    var selectedCurrency: Currency? by remember(currentFilter) {
+    var selectedCurrency: String? by remember(currentFilter) {
         mutableStateOf(currentFilter.currency)
     }
     var selectedSourceType: SourceType? by remember(currentFilter) {
@@ -116,17 +109,20 @@ fun IncomeFilterSheet(
             Spacer(modifier = Modifier.height(20.dp))
             SectionHeader("Moneda")
             Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 FilterChip(
                     selected = selectedCurrency == null,
                     onClick = { selectedCurrency = null },
                     label = { Text("Todas") },
                 )
-                Currency.values().forEach { cur ->
+                availableCurrencies.forEach { code ->
                     FilterChip(
-                        selected = selectedCurrency == cur,
-                        onClick = { selectedCurrency = cur },
-                        label = { Text(cur.displayLabel) },
+                        selected = selectedCurrency == code,
+                        onClick = { selectedCurrency = code },
+                        label = { Text(code) },
                     )
                 }
             }

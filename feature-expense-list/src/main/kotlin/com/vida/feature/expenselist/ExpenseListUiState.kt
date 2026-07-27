@@ -55,6 +55,7 @@ sealed interface ExpenseListUiState {
  * @property absoluteDateFormatted Absolute date (e.g. "20 jun 2026") for secondary display.
  * @property categoryName Category display name.
  * @property categoryColor ARGB color int for the category dot.
+ * @property categoryIcon Material icon resource name (nullable).
  * @property sourceLabel Human-readable source label (e.g. "Billetera", "Banco kubo").
  * @property sourceType Which kind of source paid for this.
  * @property currencyCode The expense's currency code (CUP, USD, MLC).
@@ -67,6 +68,7 @@ data class ExpenseListItem(
     val absoluteDateFormatted: String,
     val categoryName: String,
     val categoryColor: Int,
+    val categoryIcon: String? = null,
     val sourceLabel: String,
     val sourceType: SourceType,
     val currencyCode: String,

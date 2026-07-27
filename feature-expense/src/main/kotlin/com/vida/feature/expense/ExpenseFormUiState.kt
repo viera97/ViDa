@@ -1,5 +1,6 @@
 package com.vida.feature.expense
 
+import com.vida.core.ui.SourceItem
 import com.vida.domain.model.Category
 import com.vida.domain.model.Currency
 import com.vida.domain.model.SourceType
@@ -76,21 +77,4 @@ data class FormFields(
     val hasSourceSelected: Boolean = false,
     val dateTime: Instant = Instant.now(),
     val note: String = "",
-)
-
-/**
- * A single expense source (wallet, card, or stash) as displayed in the source picker.
- *
- * @property id Entity id; null only for WALLET (the singleton).
- * @property type Which kind of source this is.
- * @property label Display name (e.g. "Billetera", "Banco kubo", "Ahorro vacaciones").
- * @property subtitle Optional supplementary text (e.g. masked card number).
- * @property currency The source's native currency code (raw string, e.g. "BOB").
- */
-data class SourceItem(
-    val id: Long?,
-    val type: SourceType,
-    val label: String,
-    val subtitle: String? = null,
-    val currency: String,
 )

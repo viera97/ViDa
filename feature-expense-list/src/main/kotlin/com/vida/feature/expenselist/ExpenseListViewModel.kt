@@ -9,6 +9,7 @@ import com.vida.domain.model.Expense
 import com.vida.domain.model.ExpenseFilter
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
+import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.expense.SearchExpenses
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.wallet.ListWallets
@@ -39,6 +40,7 @@ class ExpenseListViewModel @Inject constructor(
     private val listCards: ListCards,
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
+    private val listCurrencies: ListCurrencies,
 ) : ViewModel() {
 
     companion object {
@@ -74,6 +76,10 @@ class ExpenseListViewModel @Inject constructor(
     /** Exposed for filter chip display — category name lookup by id. */
     val categoriesMap: Map<Long, Category> get() = categories
 
+    /** Available currency codes loaded from the database for the filter sheet. */
+    private var availableCurrencyCodes: List<String> = emptyList()
+    val currencyCodes: List<String> get() = availableCurrencyCodes
+
     /** Debounced search query input from the UI. */
     private val _searchQuery = MutableStateFlow("")
 
@@ -86,8 +92,10 @@ class ExpenseListViewModel @Inject constructor(
                 val wallets = listWallets().first()
                 val cards = listCards().first()
                 val stashes = listStashes().first()
+                val currencies = listCurrencies().first()
 
                 categories = cats.associateBy { it.id }
+                availableCurrencyCodes = currencies.map { it.code }
 
                 sourceLabels = buildMap {
                     // Wallets now have real row ids (commit 5742918). Show the
@@ -311,6 +319,7 @@ class ExpenseListViewModel @Inject constructor(
             absoluteDateFormatted = absolute,
             categoryName = cat?.name ?: "Sin categoría",
             categoryColor = cat?.color ?: 0xFF9E9E9E.toInt(),
+            categoryIcon = cat?.icon,
             sourceLabel = sourceLabels[sourceKey] ?: sourceType.name,
             sourceType = sourceType,
             currencyCode = amount.currency.code,

@@ -138,9 +138,9 @@ class IncomeRepositoryImpl @Inject constructor(
             clauses.add("date_time < ?")
             args.add(it.toEpochMillis())
         }
-        filter.currency?.let {
+        filter.currency?.takeIf { it.isNotBlank() }?.let {
             clauses.add("amount_currency = ?")
-            args.add(it.code)
+            args.add(it)
         }
         filter.sourceType?.let {
             clauses.add(

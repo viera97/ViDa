@@ -13,7 +13,7 @@ import com.vida.domain.usecase.income.GetIncome
 import com.vida.domain.usecase.income.UpdateIncome
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.wallet.ListWallets
-import com.vida.feature.expense.SourceItem
+import com.vida.core.ui.SourceItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow

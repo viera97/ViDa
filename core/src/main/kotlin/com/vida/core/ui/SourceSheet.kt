@@ -1,4 +1,4 @@
-package com.vida.feature.expense.form
+package com.vida.core.ui
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.SourceType
-import com.vida.core.ui.SourceItem
 
 private val walletColor = Color(0xFF1565C0)
 private val cardColor = Color(0xFF2E7D32)

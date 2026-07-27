@@ -299,6 +299,7 @@ fun ExpenseListScreen(
                 else -> ExpenseFilter()
             },
             categories = viewModel.categoriesMap.values.toList(),
+            availableCurrencies = viewModel.currencyCodes,
             onApply = { filter ->
                 viewModel.onFilterChanged(filter)
                 showFilterSheet = false
@@ -392,7 +393,7 @@ private fun FilterChipsRow(
             // Currency chip
             filter.currency?.let { currency ->
                 DismissibleChip(
-                    label = currency.code,
+                    label = currency,
                     onDismiss = { onDismissChip("currency") },
                 )
             }

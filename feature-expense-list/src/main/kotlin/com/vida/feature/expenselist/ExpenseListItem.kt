@@ -6,11 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.vida.core.icon.iconNameToImageVector
 
 /**
  * A single expense row: amount (bold) | description | date (relative + absolute)
@@ -66,6 +70,17 @@ fun ExpenseListItem(
                             .clip(CircleShape)
                             .background(Color(item.categoryColor)),
                     )
+                    // Category icon (if available)
+                    val icon = item.categoryIcon?.let { iconNameToImageVector(it) }
+                    if (icon != null) {
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = item.categoryName,
+                            tint = Color(item.categoryColor),
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
                     Text(
                         text = item.categoryName,
                         style = MaterialTheme.typography.bodySmall,

@@ -250,6 +250,7 @@ fun IncomeListScreen(
                 is IncomeListUiState.Empty -> s.filter
                 else -> IncomeFilter()
             },
+            availableCurrencies = viewModel.currencyCodes,
             onApply = { filter ->
                 viewModel.onFilterChanged(filter)
                 showFilterSheet = false
@@ -326,7 +327,7 @@ private fun FilterChipsRow(
             }
 
             filter.currency?.let { currency ->
-                DismissibleChip(label = currency.code, onDismiss = { onDismissChip("currency") })
+                DismissibleChip(label = currency, onDismiss = { onDismissChip("currency") })
             }
 
             filter.sourceType?.let { sourceType ->

@@ -10,7 +10,7 @@ import java.time.Instant
  * @property dateFrom Inclusive start of the date range (date_time >= dateFrom)
  * @property dateTo Exclusive end of the date range (date_time < dateTo)
  * @property categoryIds Set of category IDs to include (category_id IN (...))
- * @property currency Match expenses where amount.currency equals this
+ * @property currency Currency code string (e.g. "CUP", "USD") — null means "all currencies"
  * @property sourceType Match expenses whose polymorphic source column corresponds to this
  * @property searchQuery Free-text filter on description (LIKE '%term%')
  */
@@ -18,7 +18,7 @@ data class ExpenseFilter(
     val dateFrom: Instant? = null,
     val dateTo: Instant? = null,
     val categoryIds: Set<Long>? = null,
-    val currency: Currency? = null,
+    val currency: String? = null,
     val sourceType: SourceType? = null,
     val searchQuery: String? = null,
 )

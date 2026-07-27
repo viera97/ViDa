@@ -19,7 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
  * the field invokes [onShowSheet].
  *
  * - When [selectedSource] is non-null, displays "label (CURRENCY)".
- * - Otherwise displays a "Origen" placeholder.
+ * - Otherwise displays a "Fuente de fondos" placeholder.
  *
  * Note: unlike `feature-expense`'s SourceSelector, this picker shows wallets
  * AND cards but NOT stashes (recurring expenses are not allowed to be sourced
@@ -45,7 +45,7 @@ fun RecurringSourceSelector(
                     text = if (selectedSource != null) {
                         "${selectedSource.label} (${selectedSource.currency})"
                     } else {
-                        "Origen"
+                        "Fuente de fondos"
                     },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

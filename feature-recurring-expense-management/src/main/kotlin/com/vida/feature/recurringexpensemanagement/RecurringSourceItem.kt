@@ -1,36 +1,17 @@
 package com.vida.feature.recurringexpensemanagement
 
+import com.vida.core.ui.SourceItem
 import com.vida.domain.model.Card
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Stash
 import com.vida.domain.model.Wallet
 
-/**
- * A single source (wallet or card) as displayed in the recurring expense
- * source picker.
- *
- * Intentionally a separate type from `feature-expense`'s `SourceItem`: this
- * picker does NOT include stashes (recurring expenses only support wallet
- * and card sources).
- *
- * @property id Entity id.
- * @property type Which kind of source this is ([SourceType.WALLET] or
- *   [SourceType.CARD]).
- * @property label Display name (e.g. "Billetera principal", "Banco kubo").
- * @property subtitle Optional supplementary text (e.g. masked card number).
- * @property currency The source's native currency code.
- */
-data class RecurringSourceItem(
-    val id: Long?,
-    val type: SourceType,
-    val label: String,
-    val subtitle: String? = null,
-    val currency: String,
-)
+/** @deprecated Use [SourceItem] from core instead. */
+typealias RecurringSourceItem = SourceItem
 
-/** Builds the [RecurringSourceItem] list shown in the picker. */
-internal fun List<Wallet>.toWalletSourceItems(): List<RecurringSourceItem> = map { wallet ->
-    RecurringSourceItem(
+/** Builds the [SourceItem] list shown in the picker. */
+internal fun List<Wallet>.toWalletSourceItems(): List<SourceItem> = map { wallet ->
+    SourceItem(
         id = wallet.id,
         type = SourceType.WALLET,
         label = wallet.name,
@@ -39,9 +20,9 @@ internal fun List<Wallet>.toWalletSourceItems(): List<RecurringSourceItem> = map
     )
 }
 
-/** Builds the [RecurringSourceItem] list for cards shown in the picker. */
-internal fun List<Card>.toCardSourceItems(): List<RecurringSourceItem> = map { card ->
-    RecurringSourceItem(
+/** Builds the [SourceItem] list for cards shown in the picker. */
+internal fun List<Card>.toCardSourceItems(): List<SourceItem> = map { card ->
+    SourceItem(
         id = card.id,
         type = SourceType.CARD,
         label = card.bank,
@@ -50,9 +31,9 @@ internal fun List<Card>.toCardSourceItems(): List<RecurringSourceItem> = map { c
     )
 }
 
-/** Builds the [RecurringSourceItem] list for stashes shown in the picker. */
-internal fun List<Stash>.toStashSourceItems(): List<RecurringSourceItem> = map { stash ->
-    RecurringSourceItem(
+/** Builds the [SourceItem] list for stashes shown in the picker. */
+internal fun List<Stash>.toStashSourceItems(): List<SourceItem> = map { stash ->
+    SourceItem(
         id = stash.id,
         type = SourceType.STASH,
         label = stash.name,

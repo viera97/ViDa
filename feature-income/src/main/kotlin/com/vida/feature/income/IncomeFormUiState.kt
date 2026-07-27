@@ -39,7 +39,7 @@ sealed interface IncomeFormUiState {
     /** Form is ready for user input with all data loaded. */
     data class Ready(
         val form: IncomeFormFields,
-        val sources: List<com.vida.feature.expense.SourceItem>,
+        val sources: List<com.vida.core.ui.SourceItem>,
         val availableCurrencies: List<Currency> = Currency.entries.toList(),
         val validationErrors: Map<String, String> = emptyMap(),
     ) : IncomeFormUiState
