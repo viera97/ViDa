@@ -33,6 +33,10 @@ import androidx.compose.ui.unit.dp
 import com.vida.domain.model.CardType
 import java.time.LocalDate
 
+/** Format raw digits into chunks of 4 separated by dashes: "9723-2948-1234-5678". */
+private fun formatCardNumber(raw: String): String =
+    raw.chunked(4).joinToString("-")
+
 /**
  * Form dialog for creating or editing a card.
  *
@@ -97,6 +101,7 @@ fun CardFormDialog(
     val cardNumberError: String? = when {
         cardNumber.isNotEmpty() && !cardNumberValid -> "Solo dígitos"
         cardNumber.isNotEmpty() && cardNumber.length < 10 -> "Mínimo 10 dígitos"
+        cardNumber.length > 16 -> "Máximo 16 dígitos"
         else -> null
     }
 
@@ -104,7 +109,7 @@ fun CardFormDialog(
 
     val isSaveEnabled = !isBankBlank &&
         selectedBank.length <= 100 &&
-        cardNumber.length >= 10 && cardNumberValid &&
+        cardNumber.length in 10..16 && cardNumberValid &&
         selectedCurrency.isNotBlank() &&
         !isOrphanCurrency &&
         !isSaving
@@ -140,8 +145,11 @@ fun CardFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    value = cardNumber,
-                    onValueChange = { if (it.length <= 19 && it.all { c -> c.isDigit() }) cardNumber = it },
+                    value = formatCardNumber(cardNumber),
+                    onValueChange = { raw ->
+                        val digits = raw.filter { it.isDigit() }
+                        if (digits.length <= 16) cardNumber = digits
+                    },
                     label = { Text("Número de tarjeta") },
                     isError = cardNumberError != null,
                     supportingText = cardNumberError?.let { { Text(it) } },
