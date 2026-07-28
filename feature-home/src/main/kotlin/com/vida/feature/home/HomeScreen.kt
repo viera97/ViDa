@@ -108,6 +108,7 @@ fun HomeScreen(
         }
     }
 
+    var showAddMenu by remember { mutableStateOf(false) }
     var showExpenseDialog by remember { mutableStateOf(false) }
     var showIncomeDialog by remember { mutableStateOf(false) }
     var showInfoDialog by remember { mutableStateOf(false) }
@@ -143,8 +144,7 @@ fun HomeScreen(
         },
         floatingActionButton = {
             HomeFab(
-                onExpenseClick = { showExpenseDialog = true },
-                onIncomeClick = { showIncomeDialog = true },
+                onClick = { showAddMenu = true },
             )
         },
     ) { innerPadding ->
@@ -194,6 +194,35 @@ fun HomeScreen(
     // ── Info dialog ──────────────────────────────────────────────────────
     if (showInfoDialog) {
         InfoDialog(onDismiss = { showInfoDialog = false })
+    }
+
+    // ── Add menu dialog ──────────────────────────────────────────────────
+    if (showAddMenu) {
+        AlertDialog(
+            onDismissRequest = { showAddMenu = false },
+            title = { Text("Agregar") },
+            text = {
+                Column {
+                    TextButton(onClick = {
+                        showAddMenu = false
+                        showExpenseDialog = true
+                    }) {
+                        Text("Nuevo gasto")
+                    }
+                    TextButton(onClick = {
+                        showAddMenu = false
+                        showIncomeDialog = true
+                    }) {
+                        Text("Nuevo ingreso")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAddMenu = false }) {
+                    Text("Cancelar")
+                }
+            },
+        )
     }
 
     // Form dialogs — rendered as siblings of the Scaffold so they overlay the
