@@ -28,7 +28,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import com.vida.domain.model.CardType
 import java.time.LocalDate
@@ -36,6 +38,21 @@ import java.time.LocalDate
 /** Format raw digits into chunks of 4 separated by dashes: "9723-2948-1234-5678". */
 private fun formatCardNumber(raw: String): String =
     raw.chunked(4).joinToString("-")
+
+/** Map a cursor position in raw digit-only text to the formatted text position
+ *  (accounting for dashes inserted every 4 digits). */
+private fun rawToFormattedCursor(rawCursor: Int): Int =
+    if (rawCursor <= 0) 0 else rawCursor + (rawCursor - 1) / 4
+
+/** Map a cursor position in formatted text (with dashes) back to the
+ *  raw digit-only position by skipping dash characters. */
+private fun formattedToRawCursor(formatted: String, formattedCursor: Int): Int {
+    var raw = 0
+    for (i in 0 until formattedCursor.coerceAtMost(formatted.length)) {
+        if (formatted[i] != '-') raw++
+    }
+    return raw
+}
 
 /**
  * Form dialog for creating or editing a card.
@@ -78,7 +95,7 @@ fun CardFormDialog(
     var selectedBank by remember { mutableStateOf(
         initialBank.ifEmpty { availableBanks.firstOrNull() ?: "" }
     ) }
-    var cardNumber by remember { mutableStateOf(initialFirst6 + initialLast4) }
+    var cardNumberState by remember { mutableStateOf(TextFieldValue(initialFirst6 + initialLast4)) }
     var type by remember { mutableStateOf(initialType) }
     var selectedCurrency by remember { mutableStateOf(
         if (initialCurrency.isNotEmpty()) {
@@ -97,11 +114,11 @@ fun CardFormDialog(
     // ── Validation ───────────────────────────────────────────────────────────
 
     val isBankBlank = selectedBank.isBlank()
-    val cardNumberValid = cardNumber.all { it.isDigit() }
+    val cardNumberValid = cardNumberState.text.all { it.isDigit() }
     val cardNumberError: String? = when {
-        cardNumber.isNotEmpty() && !cardNumberValid -> "Solo dígitos"
-        cardNumber.isNotEmpty() && cardNumber.length < 10 -> "Mínimo 10 dígitos"
-        cardNumber.length > 16 -> "Máximo 16 dígitos"
+        cardNumberState.text.isNotEmpty() && !cardNumberValid -> "Solo dígitos"
+        cardNumberState.text.isNotEmpty() && cardNumberState.text.length < 10 -> "Mínimo 10 dígitos"
+        cardNumberState.text.length > 16 -> "Máximo 16 dígitos"
         else -> null
     }
 
@@ -109,7 +126,7 @@ fun CardFormDialog(
 
     val isSaveEnabled = !isBankBlank &&
         selectedBank.length <= 100 &&
-        cardNumber.length in 10..16 && cardNumberValid &&
+        cardNumberState.text.length in 10..16 && cardNumberValid &&
         selectedCurrency.isNotBlank() &&
         !isOrphanCurrency &&
         !isSaving
@@ -145,10 +162,18 @@ fun CardFormDialog(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 OutlinedTextField(
-                    value = formatCardNumber(cardNumber),
-                    onValueChange = { raw ->
-                        val digits = raw.filter { it.isDigit() }
-                        if (digits.length <= 16) cardNumber = digits
+                    value = formatCardNumber(cardNumberState.text).let { formatted ->
+                        val cursor = rawToFormattedCursor(cardNumberState.selection.start)
+                            .coerceIn(0, formatted.length)
+                        TextFieldValue(formatted, TextRange(cursor))
+                    },
+                    onValueChange = { newValue ->
+                        val digits = newValue.text.filter { it.isDigit() }
+                        if (digits.length <= 16) {
+                            val rawCursor = formattedToRawCursor(newValue.text, newValue.selection.start)
+                                .coerceIn(0, digits.length)
+                            cardNumberState = TextFieldValue(digits, TextRange(rawCursor))
+                        }
                     },
                     label = { Text("Número de tarjeta") },
                     isError = cardNumberError != null,
@@ -235,8 +260,8 @@ fun CardFormDialog(
                     val safeExpiry = expiry ?: LocalDate.now().plusMonths(1)
                     val safeNote = note.trim().ifBlank { null }
                     val minorUnits = balanceInput.toDoubleOrNull()?.let { (it * 100).toLong() } ?: 0L
-                    val extractedFirst6 = cardNumber.take(6)
-                    val extractedLast4 = cardNumber.takeLast(4)
+                    val extractedFirst6 = cardNumberState.text.take(6)
+                    val extractedLast4 = cardNumberState.text.takeLast(4)
                     onSave(
                         selectedBank.trim(),
                         extractedFirst6,
