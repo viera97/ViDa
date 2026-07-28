@@ -13,10 +13,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.TrendingDown
-import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -68,6 +66,7 @@ fun RecurringListScreen(
     val stashes by viewModel.stashes.collectAsStateWithLifecycle()
     val wallets by viewModel.wallets.collectAsStateWithLifecycle()
     // ── Dialog state (owned by Compose, not ViewModel) ────────────────────
+    var showAddMenu by remember { mutableStateOf(false) }
     var showAddDialog by remember { mutableStateOf(false) }
     var editingEntity by remember { mutableStateOf<RecurringExpense?>(null) }
     var showAddIncomeDialog by remember { mutableStateOf(false) }
@@ -117,22 +116,11 @@ fun RecurringListScreen(
             )
         },
         floatingActionButton = {
-            // FAB cluster — mirrors HomeFab layout: secondary (income) on top,
-            // primary (recurring expense) at the bottom.
-            Column(horizontalAlignment = Alignment.End) {
-                SmallFloatingActionButton(onClick = { viewModel.onIncomeFabClick() }) {
-                    Icon(
-                        imageVector = Icons.Default.TrendingUp,
-                        contentDescription = "Nueva plantilla de ingreso",
-                    )
-                }
-                Spacer(modifier = Modifier.height(12.dp))
-                FloatingActionButton(onClick = { viewModel.onFabClick() }) {
-                    Icon(
-                        imageVector = Icons.Default.TrendingDown,
-                        contentDescription = "Nueva plantilla de gasto",
-                    )
-                }
+            FloatingActionButton(onClick = { showAddMenu = true }) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Agregar",
+                )
             }
         },
     ) { innerPadding ->
@@ -213,6 +201,35 @@ fun RecurringListScreen(
                 }
             }
         }
+    }
+
+    // ── Add menu dialog ──────────────────────────────────────────────────────
+    if (showAddMenu) {
+        AlertDialog(
+            onDismissRequest = { showAddMenu = false },
+            title = { Text("Agregar") },
+            text = {
+                Column {
+                    TextButton(onClick = {
+                        showAddMenu = false
+                        showAddDialog = true
+                    }) {
+                        Text("Nueva plantilla de gasto")
+                    }
+                    TextButton(onClick = {
+                        showAddMenu = false
+                        showAddIncomeDialog = true
+                    }) {
+                        Text("Nueva plantilla de ingreso")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAddMenu = false }) {
+                    Text("Cancelar")
+                }
+            },
+        )
     }
 
     // ── Add expense dialog ────────────────────────────────────────────────────
