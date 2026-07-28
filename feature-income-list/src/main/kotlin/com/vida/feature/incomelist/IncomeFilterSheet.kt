@@ -48,6 +48,8 @@ private val SourceType.displayLabel: String get() = when (this) {
     SourceType.STASH -> "Reserva"
 }
 
+private val filterableSourceTypes = listOf(SourceType.WALLET, SourceType.CARD)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun IncomeFilterSheet(
@@ -131,13 +133,16 @@ fun IncomeFilterSheet(
             Spacer(modifier = Modifier.height(20.dp))
             SectionHeader("Tipo de fuente")
             Spacer(modifier = Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
                 FilterChip(
                     selected = selectedSourceType == null,
                     onClick = { selectedSourceType = null },
                     label = { Text("Todas") },
                 )
-                SourceType.values().forEach { st ->
+                filterableSourceTypes.forEach { st ->
                     FilterChip(
                         selected = selectedSourceType == st,
                         onClick = { selectedSourceType = st },
