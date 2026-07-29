@@ -11,6 +11,7 @@ import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.currency.ListCurrencies
 import com.vida.domain.usecase.expense.AddExpense
+import com.vida.domain.usecase.expense.CheckSufficientBalance
 import com.vida.domain.usecase.expense.GetExpense
 import com.vida.domain.usecase.expense.UpdateExpense
 import com.vida.domain.usecase.stash.ListStashes
@@ -49,6 +50,7 @@ class ExpenseFormViewModel @Inject constructor(
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
     private val listCurrencies: ListCurrencies,
+    private val checkSufficientBalance: CheckSufficientBalance,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<ExpenseFormUiState>(ExpenseFormUiState.Loading)
@@ -294,7 +296,7 @@ class ExpenseFormViewModel @Inject constructor(
         )
     }
 
-fun onSourceSelected(type: SourceType, id: Long?) {
+    fun onSourceSelected(type: SourceType, id: Long?) {
         // Auto-update the currency to match the source's native currency so the
         // user doesn't have to re-pick it manually. The source IS the origin of
         // the expense — its currency is the natural default. The user can still
@@ -382,22 +384,30 @@ fun onSourceSelected(type: SourceType, id: Long?) {
 
         viewModelScope.launch {
             try {
-                // Preserve the row id when editing so UpdateExpense routes through
-                // Room's @Upsert as an UPDATE rather than an INSERT. For create mode
-                // the id defaults to 0L and AddExpense inserts a new row.
-                val expense = Expense(
-                    id = currentExpenseId ?: 0L,
-                    categoryId = ready.form.categoryId!!,
-                    amount = Money(
-                        BigDecimal(ready.form.amount),
-                        ready.form.currency,
-                    ),
-                    description = ready.form.description,
-                    dateTime = ready.form.dateTime,
-                    sourceType = ready.form.sourceType,
-                    sourceId = ready.form.sourceId,
-                    note = ready.form.note.ifBlank { null },
+                val expense = buildExpense(ready)
+
+                // Balance gate: WALLET/STASH block if insufficient balance.
+                // Error is keyed as "amount" so it renders in AmountSection.
+                val balanceCheck = checkSufficientBalance(
+                    sourceType = expense.sourceType,
+                    sourceId = expense.sourceId,
+                    amount = expense.realAmount ?: expense.amount,
                 )
+                if (balanceCheck is CheckSufficientBalance.Result.Insufficient) {
+                    when (expense.sourceType) {
+                        SourceType.WALLET, SourceType.STASH -> {
+                            val msg = "Saldo insuficiente: la fuente tiene ${formatBalance(balanceCheck.balance)}"
+                            _uiState.value = ready.copy(
+                                validationErrors = mapOf("amount" to msg),
+                            )
+                            return@launch
+                        }
+                        SourceType.CARD -> {
+                            // Soft rule: allow through.
+                        }
+                    }
+                }
+
                 if (isEditMode && currentExpenseId != null) {
                     updateExpense(expense)
                 } else {
@@ -412,6 +422,22 @@ fun onSourceSelected(type: SourceType, id: Long?) {
             }
         }
     }
+
+    /** Formats [Money] to a short readable string, e.g. "150.00 CUP". */
+    private fun formatBalance(money: Money): String =
+        "${money.amount.stripTrailingZeros().toPlainString()} ${money.currency.code}"
+
+    /** Builds the [Expense] from the current form state. Extracted for reuse inside the submit coroutine. */
+    private fun buildExpense(ready: ExpenseFormUiState.Ready): Expense = Expense(
+        id = currentExpenseId ?: 0L,
+        categoryId = ready.form.categoryId!!,
+        amount = Money(BigDecimal(ready.form.amount), ready.form.currency),
+        description = ready.form.description,
+        dateTime = ready.form.dateTime,
+        sourceType = ready.form.sourceType,
+        sourceId = ready.form.sourceId,
+        note = ready.form.note.ifBlank { null },
+    )
 
     // ── Internal helpers ────────────────────────────────────────────────────
 

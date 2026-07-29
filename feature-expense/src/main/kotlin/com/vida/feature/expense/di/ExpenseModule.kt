@@ -1,10 +1,13 @@
 package com.vida.feature.expense.di
 
+import com.vida.domain.repository.CardRepository
 import com.vida.domain.repository.CategoryRepository
 import com.vida.domain.repository.ExpenseRepository
+import com.vida.domain.repository.StashRepository
 import com.vida.domain.repository.WalletRepository
 import com.vida.domain.usecase.category.ListCategories
 import com.vida.domain.usecase.expense.AddExpense
+import com.vida.domain.usecase.expense.CheckSufficientBalance
 import com.vida.domain.usecase.expense.GetExpense
 import com.vida.domain.usecase.expense.UpdateExpense
 import com.vida.domain.usecase.wallet.GetWallet
@@ -44,4 +47,11 @@ object ExpenseModule {
     @Provides
     fun provideGetWallet(repo: WalletRepository): GetWallet =
         GetWallet(repo)
+
+    @Provides
+    fun provideCheckSufficientBalance(
+        walletRepo: WalletRepository,
+        cardRepo: CardRepository,
+        stashRepo: StashRepository,
+    ): CheckSufficientBalance = CheckSufficientBalance(walletRepo, cardRepo, stashRepo)
 }

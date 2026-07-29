@@ -36,6 +36,8 @@ sealed interface ExpenseFormUiState {
         val categories: List<Category>,
         val availableCurrencies: List<Currency> = Currency.entries.toList(),
         val validationErrors: Map<String, String> = emptyMap(),
+        /** Non-blocking warning, shown above the submit button for soft-rule violations (e.g. card balance). */
+        val balanceWarning: String? = null,
     ) : ExpenseFormUiState
 
     /** Submission is in-flight — submit button should be disabled. */
