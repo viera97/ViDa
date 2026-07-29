@@ -95,6 +95,9 @@ class ExpenseRepositoryImpl @Inject constructor(
             newId
         }
 
+    override fun observeRecent(limit: Int): Flow<List<Expense>> =
+        dao.observeRecent(limit).map { entities -> entities.map { mapper.toDomain(it) } }
+
     // ── Aggregation methods for statistics ─────────────────────────────────
 
     override suspend fun getExpenseTotalsByCategory(from: Instant, to: Instant): List<CategoryExpenseTotal> =

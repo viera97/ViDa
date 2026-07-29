@@ -33,6 +33,8 @@ import androidx.room.PrimaryKey
         Index(value = ["destination_card_id"], name = "idx_transfers_destination_card_id"),
         Index(value = ["destination_stash_id"], name = "idx_transfers_destination_stash_id"),
         Index(value = ["date_time"], name = "idx_transfers_date_time"),
+        Index(value = ["source_stash_id", "date_time"], name = "idx_transfers_source_stash_date"),
+        Index(value = ["destination_stash_id", "date_time"], name = "idx_transfers_dest_stash_date"),
     ],
 )
 data class TransferEntity(

@@ -45,6 +45,8 @@ import androidx.room.PrimaryKey
         Index(value = ["date_time"], name = "idx_incomes_date_time"),
         Index(value = ["destination_card_id"], name = "idx_incomes_destination_card_id"),
         Index(value = ["destination_stash_id"], name = "idx_incomes_destination_stash_id"),
+        Index(value = ["destination_wallet_id"], name = "idx_incomes_destination_wallet_id"),
+        Index(value = ["destination_stash_id", "date_time"], name = "idx_incomes_dest_stash_date"),
     ],
 )
 data class IncomeEntity(

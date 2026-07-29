@@ -15,6 +15,7 @@ import com.vida.domain.usecase.card.GetCardBalance
 import com.vida.domain.usecase.card.ListCards
 import com.vida.domain.usecase.card.UpdateCard
 import com.vida.domain.usecase.currency.ListCurrencies
+import com.vida.feature.cardmanagement.cache.CardListCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -62,6 +63,7 @@ class CardListViewModel @Inject constructor(
     private val getCardBalance: GetCardBalance,
     private val listBanks: ListBanks,
     private val listCurrencies: ListCurrencies,
+    private val cardListCache: CardListCache,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<CardListUiState>(CardListUiState.Loading)
@@ -91,6 +93,11 @@ class CardListViewModel @Inject constructor(
     private var sourceObservationJob: Job? = null
 
     init {
+        // Show cached data instantly, then start the reactive pipeline.
+        // Ensures the Fuentes screen renders immediately on cold start.
+        cardListCache.load()?.let { cached ->
+            _uiState.value = CardListUiState.Ready(cards = cached)
+        }
         observeCards()
     }
 
@@ -301,7 +308,11 @@ class CardListViewModel @Inject constructor(
         sourceObservationJob?.cancel()
         sourceObservationJob = viewModelScope.launch {
             if (showLoading) {
-                _uiState.value = CardListUiState.Loading
+                // Don't flash Loading over cached data — the user sees stale
+                // data only until the reactive pipeline emits fresh results.
+                if (_uiState.value !is CardListUiState.Ready) {
+                    _uiState.value = CardListUiState.Loading
+                }
             }
             listCards()
                 .flatMapLatest { cards ->
@@ -326,10 +337,18 @@ class CardListViewModel @Inject constructor(
                     )
                 }
                 .collect { items ->
-                    _uiState.value = if (items.isEmpty()) {
+                    val state = if (items.isEmpty()) {
                         CardListUiState.Empty
                     } else {
                         CardListUiState.Ready(cards = items)
+                    }
+                    _uiState.value = state
+                    // Update cache — Ready persists, Empty clears stale data.
+                    when (state) {
+                        is CardListUiState.Ready -> cardListCache.save(state.cards)
+                        is CardListUiState.Empty -> cardListCache.clear()
+                        is CardListUiState.Loading,
+                        is CardListUiState.Error -> { /* no-op */ }
                     }
                 }
         }

@@ -33,6 +33,7 @@ import com.vida.domain.usecase.recurring.UpdateRecurringExpense
 import com.vida.domain.usecase.recurring.UpdateRecurringIncome
 import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.wallet.ListWallets
+import com.vida.feature.recurringexpensemanagement.cache.RecurringListCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -86,6 +87,7 @@ class RecurringListViewModel @Inject constructor(
     private val listStashes: ListStashes,
     private val listWallets: ListWallets,
     private val listCurrencies: ListCurrencies,
+    private val recurringListCache: RecurringListCache,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RecurringListUiState>(RecurringListUiState.Loading)
@@ -125,6 +127,10 @@ class RecurringListViewModel @Inject constructor(
     private var recurringJob: Job? = null
 
     init {
+        // Show cached data instantly, then start the reactive pipeline.
+        recurringListCache.load()?.let { cached ->
+            _uiState.value = RecurringListUiState.Ready(items = cached)
+        }
         collectReferenceData()
     }
 
@@ -464,7 +470,12 @@ class RecurringListViewModel @Inject constructor(
                                 .thenBy { it.startDateEpochDay },
                         )
                 }
-                    .onStart { _uiState.value = RecurringListUiState.Loading }
+                    .onStart {
+                        // Don't flash Loading over cached data.
+                        if (_uiState.value !is RecurringListUiState.Ready) {
+                            _uiState.value = RecurringListUiState.Loading
+                        }
+                    }
                     .catch { t ->
                         if (t is CancellationException) throw t
                         _uiState.value = RecurringListUiState.Error(
@@ -472,10 +483,18 @@ class RecurringListViewModel @Inject constructor(
                         )
                     }
                     .collect { items ->
-                        _uiState.value = if (items.isEmpty()) {
+                        val state = if (items.isEmpty()) {
                             RecurringListUiState.Empty
                         } else {
                             RecurringListUiState.Ready(items = items)
+                        }
+                        _uiState.value = state
+                        // Update cache — Ready persists, Empty clears.
+                        when (state) {
+                            is RecurringListUiState.Ready -> recurringListCache.save(state.items)
+                            is RecurringListUiState.Empty -> recurringListCache.clear()
+                            is RecurringListUiState.Loading,
+                            is RecurringListUiState.Error -> { /* no-op */ }
                         }
                     }
             } catch (t: Throwable) {

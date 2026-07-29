@@ -108,6 +108,15 @@ interface ExpenseDao {
     )
     suspend fun getExpenseTotalsByCurrency(from: Long, to: Long): List<CurrencyTotal>
 
+    /**
+     * Returns only the most recent [limit] expenses (newest first).
+     * Lightweight alternative to [observeAll] for the home dashboard where only
+     * the last N rows are displayed — avoids a full-table scan + SQLCipher
+     * decryption of every row.
+     */
+    @Query("SELECT * FROM expenses ORDER BY date_time DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<ExpenseEntity>>
+
     @Upsert
     suspend fun upsert(entity: ExpenseEntity): Long
 

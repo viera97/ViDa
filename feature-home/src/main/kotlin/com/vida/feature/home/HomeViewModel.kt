@@ -5,17 +5,19 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vida.domain.model.Card
 import com.vida.domain.model.Currency
+import com.vida.domain.model.Expense
+import com.vida.domain.model.Income
 import com.vida.domain.model.Money
 import com.vida.domain.model.SourceType
 import com.vida.domain.model.Stash
 import com.vida.domain.model.Wallet
 import kotlin.comparisons.nullsLast
 import com.vida.domain.repository.CategoryRepository
-import com.vida.domain.usecase.balance.GetTotalBalance
+import com.vida.domain.repository.ExpenseRepository
+import com.vida.domain.repository.IncomeRepository
+import com.vida.domain.usecase.ConvertCurrency
 import com.vida.domain.usecase.card.GetCardBalance
 import com.vida.domain.usecase.card.ListCards
-import com.vida.domain.usecase.expense.ListExpenses
-import com.vida.domain.usecase.income.ListIncomes
 import com.vida.domain.usecase.rate.GetCurrentRate
 import com.vida.domain.usecase.rate.ListCurrencyRates
 import com.vida.domain.usecase.stash.GetStashBalance
@@ -23,12 +25,15 @@ import com.vida.domain.usecase.stash.ListStashes
 import com.vida.domain.usecase.wallet.GetWalletBalance
 import com.vida.domain.usecase.wallet.ListWallets
 import com.vida.core.format.toRelativeDateString
+import com.vida.feature.home.cache.DashboardCache
 import com.vida.feature.home.home.formatHomeMoney
 import com.vida.feature.home.update.ApkInstaller
 import com.vida.feature.home.update.ReleaseAsset
 import com.vida.feature.home.update.UpdateCheckResult
 import com.vida.feature.home.update.UpdateManager
 import com.vida.feature.home.update.UpdateUiState
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -50,9 +55,8 @@ import java.time.ZoneId
  */
 @dagger.hilt.android.lifecycle.HiltViewModel
 class HomeViewModel @javax.inject.Inject constructor(
-    private val getTotalBalance: GetTotalBalance,
-    private val listExpenses: ListExpenses,
-    private val listIncomes: ListIncomes,
+    private val dashboardCache: DashboardCache,
+    private val convertCurrency: ConvertCurrency,
     private val listCards: ListCards,
     private val listStashes: ListStashes,
     private val getWalletBalance: GetWalletBalance,
@@ -62,6 +66,8 @@ class HomeViewModel @javax.inject.Inject constructor(
     private val getCurrentRate: GetCurrentRate,
     private val listCurrencyRates: ListCurrencyRates,
     private val categoryRepository: CategoryRepository,
+    private val expenseRepository: ExpenseRepository,
+    private val incomeRepository: IncomeRepository,
     private val updateManager: UpdateManager,
     private val apkInstaller: ApkInstaller,
 ) : ViewModel() {
@@ -82,13 +88,20 @@ class HomeViewModel @javax.inject.Inject constructor(
      * Trigger flow: any change to expenses, incomes, cards, or stashes causes a
      * re-derivation of the full dashboard state.
      *
+     * Uses `observeRecent(1)` for expenses/incomes — a single-row query — so Room
+     * still detects table invalidations but without a full-table scan + SQLCipher
+     * decryption of every row just to know that *something* changed.
+     *
      * Expenses + incomes are nested in a single combine first so the outer
      * combine stays at the 5-arg overload ceiling — adding a 6th peer
      * (incomes) without nesting would require the vararg overload and lose
      * type inference.
      */
     private val triggerFlow: Flow<Unit> = combine(
-        combine(listExpenses(), listIncomes()) { _, _ -> Unit },
+        combine(
+            expenseRepository.observeRecent(1),
+            incomeRepository.observeRecent(1),
+        ) { _, _ -> Unit },
         listCards(),
         listStashes(),
         listWallets(),
@@ -97,9 +110,16 @@ class HomeViewModel @javax.inject.Inject constructor(
 
     init {
         viewModelScope.launch {
-            _uiState.value = HomeUiState.Loading
+            // Stale-while-revalidate: show cached data instantly, then refresh
+            val cached = dashboardCache.load()
+            _uiState.value = cached ?: HomeUiState.Loading
+
             triggerFlow.collect {
-                _uiState.value = computeState()
+                val state = computeState()
+                if (state is HomeUiState.Ready) {
+                    dashboardCache.save(state)
+                }
+                _uiState.value = state
             }
         }
     }
@@ -120,8 +140,26 @@ class HomeViewModel @javax.inject.Inject constructor(
         val now = Instant.now()
         val zone = ZoneId.systemDefault()
 
+        // ── Phase 1: load entity lists in parallel ─────────────────────────
+        val wallets: List<Wallet>
+        val cards: List<Card>
+        val stashes: List<Stash>
+        val expenses: List<Expense>
+        val incomes: List<Income>
+        coroutineScope {
+            val wDef = async { listWallets().first() }
+            val cDef = async { listCards().first() }
+            val sDef = async { listStashes().first() }
+            val eDef = async { expenseRepository.observeRecent(5).first() }
+            val iDef = async { incomeRepository.observeRecent(5).first() }
+            wallets = wDef.await()
+            cards = cDef.await()
+            stashes = sDef.await()
+            expenses = eDef.await()
+            incomes = iDef.await()
+        }
+
         // ── Per-source balances (fail-fast per S2) ─────────────────────────
-        val wallets = listWallets().first()
         val walletBalances = wallets.map { wallet ->
             val balance = try {
                 getWalletBalance(wallet.id).first()
@@ -131,7 +169,6 @@ class HomeViewModel @javax.inject.Inject constructor(
             wallet to balance
         }
 
-        val cards: List<Card> = listCards().first()
         val cardBalances = cards.map { card ->
             val balance = try {
                 getCardBalance(card.id).first()
@@ -141,7 +178,6 @@ class HomeViewModel @javax.inject.Inject constructor(
             card to balance
         }
 
-        val stashes: List<Stash> = listStashes().first()
         val stashBalances = stashes.map { stash ->
             val balance = try {
                 getStashBalance(stash.id).first()
@@ -196,37 +232,31 @@ class HomeViewModel @javax.inject.Inject constructor(
             .groupBy({ it.balance.currency }) { it.balance }
             .mapValues { (_, moneys) -> moneys.reduce { acc, m -> acc + m } }
 
-        // ── Total balance ──────────────────────────────────────────────────
+        // ── Total balance (computed from per-source data, no extra queries) ──
         val total = try {
-            getTotalBalance()
+            perSource.fold(Money.ZERO_CUP) { acc, source ->
+                val inCup = convertCurrency(source.balance, Currency.CUP, now) ?: Money.ZERO_CUP
+                acc + inCup
+            }
         } catch (t: Throwable) {
             if (t is kotlin.coroutines.cancellation.CancellationException) throw t
             return HomeUiState.Error(t.message ?: "Error de balance")
         }
 
-        // ── Recent expenses (≤5, newest first) ─────────────────────────────
-        // Load the FULL expense and income lists once — used both for the
-        // recent-rows display AND for the per-source last-use sort below.
-        val allExpenses = listExpenses().first()
-        val expenses = allExpenses.take(5)
-
-        // ── Recent incomes (≤5, newest first) ──────────────────────────────
-        val allIncomes = listIncomes().first()
-        val incomes = allIncomes.take(5)
-
         // ── Per-source last-use map (for "most recently used" ordering) ───
         // Key = "${sourceType}:${sourceId}". Value = max date across expenses
-        // and incomes for that source. Sources without transactions are
-        // absent from the map and fall to the end of the sort.
+        // and incomes for that source. Built from the last 5 of each, which
+        // covers the most recently used sources. Sources without transactions
+        // in those recent items fall to the end of the sort.
         val lastUseBySource: Map<String, Instant> = buildMap {
-            for (e in allExpenses) {
+            for (e in expenses) {
                 val key = "${e.sourceType.name}:${e.sourceId}"
                 val existing = this[key]
                 if (existing == null || e.dateTime > existing) {
                     this[key] = e.dateTime
                 }
             }
-            for (i in allIncomes) {
+            for (i in incomes) {
                 val key = "${i.sourceType.name}:${i.sourceId}"
                 val existing = this[key]
                 if (existing == null || i.dateTime > existing) {

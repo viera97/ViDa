@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Splash icon — simplified version of ic_launcher_foreground without the
+  108dp adaptive-icon scaling tricks.  Renders at full size so it works
+  correctly as a windowBackground or ImageView drawable.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="96dp"
+    android:height="96dp"
+    android:viewportWidth="96"
+    android:viewportHeight="96">
+    <!-- Background circle -->
+    <path
+        android:fillColor="#6CC5CA"
+        android:pathData="M48,4A44,44 0,1 1,48 92A44,44 0,1 1,48 4Z" />
+    <!-- Stylized V letterform -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M28,36 L38,66 L48,48 L58,66 L68,36 L58,36 L52,52 L48,44 L44,52 L38,36 Z" />
+</vector>

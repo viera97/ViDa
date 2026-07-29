@@ -1,0 +1,1 @@
+sigue un poco lenta, noto que cuando abro por primera vez la aplicacion se demora cargando la informacion de todas las pestañas, tal vez podamos tener guardada la información que se muestra en caché o algo tal que se demore menos por lo menos la visualización inicial de las cosa

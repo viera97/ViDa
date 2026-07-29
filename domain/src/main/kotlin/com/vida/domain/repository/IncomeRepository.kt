@@ -29,6 +29,13 @@ interface IncomeRepository {
     suspend fun getBySource(sourceType: SourceType, sourceId: Long?, asOf: Instant): Flow<List<Income>>
     suspend fun getByDateRange(from: Instant, to: Instant): Flow<List<Income>>
     suspend fun searchIncomes(filter: IncomeFilter, limit: Int, offset: Int): List<Income>
+    /**
+     * Returns only the most recent [limit] incomes (newest first).
+     * Lightweight alternative to [getAll] for the home dashboard — avoids a
+     * full-table scan + SQLCipher decryption of every row.
+     */
+    fun observeRecent(limit: Int): Flow<List<Income>>
+
     // ── Aggregation methods for statistics ─────────────────────────────────
     suspend fun getIncomeTotalsByPeriod(from: Instant, to: Instant, bucketMillis: Long): List<PeriodIncomeTotal>
     suspend fun getIncomeTotalsByCurrency(from: Instant, to: Instant): List<CurrencyTotal>

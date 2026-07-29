@@ -83,6 +83,14 @@ interface IncomeDao {
     )
     suspend fun getIncomeTotalsByCurrency(from: Long, to: Long): List<CurrencyTotal>
 
+    /**
+     * Returns only the most recent [limit] incomes (newest first).
+     * Lightweight alternative to [observeAll] for the home dashboard where only
+     * the last N rows are displayed.
+     */
+    @Query("SELECT * FROM incomes ORDER BY date_time DESC LIMIT :limit")
+    fun observeRecent(limit: Int): Flow<List<IncomeEntity>>
+
     @Upsert
     suspend fun upsert(entity: IncomeEntity): Long
 

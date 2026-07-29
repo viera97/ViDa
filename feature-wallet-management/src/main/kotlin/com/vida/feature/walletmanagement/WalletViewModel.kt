@@ -11,6 +11,7 @@ import com.vida.domain.usecase.wallet.GetWallet
 import com.vida.domain.usecase.wallet.GetWalletBalance
 import com.vida.domain.usecase.wallet.ListWallets
 import com.vida.domain.usecase.wallet.UpdateWallet
+import com.vida.feature.walletmanagement.cache.WalletListCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -53,6 +54,7 @@ class WalletViewModel @Inject constructor(
     private val getWallet: GetWallet,
     private val getWalletBalance: GetWalletBalance,
     private val listCurrencies: ListCurrencies,
+    private val walletListCache: WalletListCache,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<WalletListUiState>(WalletListUiState.Loading)
@@ -71,6 +73,11 @@ class WalletViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        // Show cached data instantly, then start the reactive pipeline.
+        // Ensures the Fuentes screen renders immediately on cold start.
+        walletListCache.load()?.let { cached ->
+            _uiState.value = WalletListUiState.Ready(wallets = cached)
+        }
         loadWallets()
     }
 
@@ -205,7 +212,11 @@ class WalletViewModel @Inject constructor(
     private fun loadWallets(showLoading: Boolean = true) {
         viewModelScope.launch {
             if (showLoading) {
-                _uiState.value = WalletListUiState.Loading
+                // Don't flash Loading over cached data — the user sees stale
+                // data only until the reactive pipeline emits fresh results.
+                if (_uiState.value !is WalletListUiState.Ready) {
+                    _uiState.value = WalletListUiState.Loading
+                }
             }
             try {
                 listWallets().flatMapLatest { wallets ->
@@ -215,10 +226,18 @@ class WalletViewModel @Inject constructor(
                         combineWalletBalances(wallets)
                     }
                 }.collect { items ->
-                    _uiState.value = if (items.isEmpty()) {
+                    val state = if (items.isEmpty()) {
                         WalletListUiState.Empty
                     } else {
                         WalletListUiState.Ready(wallets = items)
+                    }
+                    _uiState.value = state
+                    // Update cache — Ready persists, Empty clears stale data.
+                    when (state) {
+                        is WalletListUiState.Ready -> walletListCache.save(state.wallets)
+                        is WalletListUiState.Empty -> walletListCache.clear()
+                        is WalletListUiState.Loading,
+                        is WalletListUiState.Error -> { /* no-op */ }
                     }
                 }
             } catch (t: Throwable) {

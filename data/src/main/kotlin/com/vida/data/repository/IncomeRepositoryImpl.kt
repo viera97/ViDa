@@ -77,6 +77,9 @@ class IncomeRepositoryImpl @Inject constructor(
             newId
         }
 
+    override fun observeRecent(limit: Int): Flow<List<Income>> =
+        dao.observeRecent(limit).map { entities -> entities.map { mapper.toDomain(it) } }
+
     // ── Aggregation methods for statistics ─────────────────────────────────
 
     override suspend fun getIncomeTotalsByPeriod(

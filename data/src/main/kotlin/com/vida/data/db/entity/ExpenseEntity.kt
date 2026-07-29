@@ -48,6 +48,8 @@ import androidx.room.PrimaryKey
         Index(value = ["date_time"], name = "idx_expenses_date_time"),
         Index(value = ["source_card_id"], name = "idx_expenses_source_card_id"),
         Index(value = ["source_stash_id"], name = "idx_expenses_source_stash_id"),
+        Index(value = ["source_wallet_id"], name = "idx_expenses_source_wallet_id"),
+        Index(value = ["source_stash_id", "date_time"], name = "idx_expenses_source_stash_date"),
     ],
 )
 data class ExpenseEntity(

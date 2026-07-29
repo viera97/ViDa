@@ -37,6 +37,7 @@ import androidx.room.PrimaryKey
         Index(value = ["category_id"], name = "idx_recurring_expenses_category_id"),
         Index(value = ["source_card_id"], name = "idx_recurring_expenses_source_card_id"),
         Index(value = ["source_stash_id"], name = "idx_recurring_expenses_source_stash_id"),
+        Index(value = ["source_wallet_id"], name = "idx_recurring_expenses_source_wallet_id"),
         Index(value = ["is_active"], name = "idx_recurring_expenses_is_active"),
     ],
 )

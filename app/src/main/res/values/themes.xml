@@ -1,4 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!--
+      Base theme — used after Compose renders.
+      Parent is the bare Material Light theme; ViDaApp sets its own
+      MaterialTheme via Compose so no AppCompat is needed.
+    -->
     <style name="Theme.ViDa" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!--
+      Splash / startup theme — shown the instant the window appears, before
+      Compose draws its first frame.  The window background is a teal layer
+      with the app icon centered, so the user never sees a blank white flash.
+
+      Once setContent + ViDaApp render, the composable tree draws over this
+      background seamlessly.  This is the same approach used by GMail, Drive,
+      and countless other Android apps that target the window level directly.
+    -->
+    <style name="Theme.ViDa.Splash" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@drawable/splash_background</item>
+    </style>
 </resources>

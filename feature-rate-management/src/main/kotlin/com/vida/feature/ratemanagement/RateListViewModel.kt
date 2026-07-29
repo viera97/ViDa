@@ -8,6 +8,7 @@ import com.vida.domain.usecase.rate.DeleteCurrencyRate
 import com.vida.domain.usecase.rate.ListCurrencyRates
 import com.vida.domain.usecase.rate.UpdateCurrencyRate
 import com.vida.domain.usecase.currency.ListCurrencies
+import com.vida.feature.ratemanagement.cache.RateListCache
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -49,6 +50,7 @@ class RateListViewModel @Inject constructor(
     private val updateCurrencyRate: UpdateCurrencyRate,
     private val deleteCurrencyRate: DeleteCurrencyRate,
     listCurrencies: ListCurrencies,
+    private val rateListCache: RateListCache,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<RateListUiState>(RateListUiState.Loading)
@@ -77,6 +79,10 @@ class RateListViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
+        // Show cached data instantly, then start the one-shot fetch.
+        rateListCache.load()?.let { cached ->
+            _uiState.value = RateListUiState.Ready(items = cached)
+        }
         loadRates()
     }
 
@@ -350,10 +356,18 @@ class RateListViewModel @Inject constructor(
                             .thenBy { it.provider },
                     )
 
-                _uiState.value = if (items.isEmpty()) {
+                val state = if (items.isEmpty()) {
                     RateListUiState.Empty
                 } else {
                     RateListUiState.Ready(items = items)
+                }
+                _uiState.value = state
+                // Update cache — Ready persists, Empty clears stale data.
+                when (state) {
+                    is RateListUiState.Ready -> rateListCache.save(state.items)
+                    is RateListUiState.Empty -> rateListCache.clear()
+                    is RateListUiState.Loading,
+                    is RateListUiState.Error -> { /* no-op */ }
                 }
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t

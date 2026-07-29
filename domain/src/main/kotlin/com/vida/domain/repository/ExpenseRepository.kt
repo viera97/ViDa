@@ -28,6 +28,13 @@ interface ExpenseRepository {
     suspend fun getByCategory(categoryId: Long, asOf: Instant): Flow<List<Expense>>
     suspend fun getByDateRange(from: Instant, to: Instant): Flow<List<Expense>>
     suspend fun searchExpenses(filter: ExpenseFilter, limit: Int, offset: Int): List<Expense>
+    /**
+     * Returns only the most recent [limit] expenses (newest first).
+     * Lightweight alternative to [getAll] for the home dashboard — avoids a
+     * full-table scan + SQLCipher decryption of every row.
+     */
+    fun observeRecent(limit: Int): Flow<List<Expense>>
+
     // ── Aggregation methods for statistics ─────────────────────────────────
     suspend fun getExpenseTotalsByCategory(from: Instant, to: Instant): List<CategoryExpenseTotal>
     suspend fun getExpenseTotalsByPeriod(from: Instant, to: Instant, bucketMillis: Long): List<PeriodExpenseTotal>
